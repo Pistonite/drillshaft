@@ -1,0 +1,8 @@
+[package]
+name = "drillshaft"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cu = { workspace = true, features = ["print", "prompt", "fs"] }
+drillshaft-env = { path = "../drillshaft-env" }

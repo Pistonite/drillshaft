@@ -1,0 +1,9 @@
+[package]
+name = "drillshaft-build"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+cu = { workspace = true, features = ["fs", "json"] }
+itertools = "0.14.0"
+pm = { workspace = true, features = ["full"] }

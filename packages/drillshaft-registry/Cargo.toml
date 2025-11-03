@@ -1,0 +1,15 @@
+[package]
+name = "drillshaft-registry"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+cu = { workspace = true, features = ["print", "process"] }
+drillshaft-env = { path = "../drillshaft-env" }
+enum-map.workspace = true
+enumset.workspace = true
+phf = { version = "0.13.1", features = ["macros"] }
+
+[build-dependencies]
+cu = { workspace = true }
+drillshaft-build = { path = "../drillshaft-build" }
