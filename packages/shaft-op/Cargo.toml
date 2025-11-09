@@ -8,6 +8,9 @@ cu = { workspace = true, features = ["print", "process", "json"] }
 enumset.workspace = true
 reqwest = { version = "0.12.24", features = ["gzip"] }
 serde = "1"
+sha2 = "0.10.9"
+sysinfo = "0.37.2"
+tokio = "1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55.0"

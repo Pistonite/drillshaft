@@ -16,8 +16,7 @@ pub fn verify(ctx: &Context) -> cu::Result<Verified> {
     match ctx.platform {
         Platform::Arch => {
             // the git package
-            let mut pacman = pacman::lock()?;
-            if !pacman.is_installed("git")? {
+            if !pacman::is_installed("git")? {
                 cu::bail!("current 'git' is not installed with pacman; please uninstall it or use the 'system-git' package");
             }
         }
@@ -39,7 +38,7 @@ pub async fn download(ctx: &Context) -> cu::Result<()> {
             let extract_path = temp_dir.join("extracted");
             let url = version::windows_download_url();
             // download
-            op::co_download_to_file(url, &download_path).await?;
+            op::co_download_to_file(url, &download_path, version::windows_sha256()).await?;
             // extract
             download_path.command()
             .add(cu::args!["-o", extract_path, "-y"])
@@ -54,7 +53,23 @@ pub async fn download(ctx: &Context) -> cu::Result<()> {
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {
-    todo!()
+    match ctx.platform {
+        Platform::Arch => {
+            op::sysinfo::ensure_terminated("git")?;
+            todo!()
+        }
+        Platform::Windows => {
+            op::sysinfo::ensure_terminated("git.exe")?;
+            let temp_dir = ctx.temp_dir();
+            let extract_path = temp_dir.join("extracted");
+            let old_path = temp_dir.join("old");
+            cu::fs::rec_remove(&old_path)?;
+            let install_dir = ctx.install_dir();
+            if install_dir.exists() {
+                std::fs::rename(&install_dir, old_path)
+            }
+        }
+    }
 }
 
 pub fn uninstall(ctx: &Context) -> cu::Result<()> {

@@ -133,6 +133,9 @@ impl Context {
         cu::ensure!(expected== actual, "expected location: '{}', actual location: '{}'", expected.display(), actual.display());
         Ok(())
     }
+    pub const fn is_windows(&self) -> bool {
+        matches!(self.platform, Platform::Windows)
+    }
 }
 
 #[path = "./packages.gen.rs"]

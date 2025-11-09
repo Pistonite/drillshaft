@@ -1,10 +1,11 @@
 use std::io::Write;
 use std::path::Path;
-use std::sync::{LazyLock, OnceLock};
+use std::sync::OnceLock;
 
 use cu::pre::*;
-
 use reqwest::Client;
+
+use crate::util;
 
 static CLIENT: OnceLock<Client> = OnceLock::new();
 
@@ -24,24 +25,37 @@ fn client() -> cu::Result<&'static Client> {
 }
 
 #[inline(always)]
-pub async fn co_download_to_file(url: impl AsRef<str>, path: impl AsRef<Path>) -> cu::Result<()> {
-    co_download_to_file_impl(url.as_ref(), path.as_ref()).await
+pub async fn co_download_to_file(url: impl AsRef<str>, path: impl AsRef<Path>, sha256: &str) -> cu::Result<()> {
+    co_download_to_file_impl(url.as_ref(), path.as_ref(), sha256).await
+}
+async fn co_download_to_file_impl(url: &str, path: &Path, sha256: &str) -> cu::Result<()> {
+    cu::check!(co_download_to_file_inner(url, path , sha256).await, "failed to download '{url}' to {}", path.display())
 }
 
-async fn co_download_to_file_impl(url: &str, path: &Path) -> cu::Result<()> {
+async fn co_download_to_file_inner(url: &str, path: &Path, sha256: &str) -> cu::Result<()> {
+    // if the file already exists and hash matches, skip download
+    if let Ok(hash) = util::co_sha256(path).await && hash == sha256 {
+        cu::debug!("hash matched for '{url}'");
+        return Ok(())
+    }
+
     let bar = cu::progress_unbounded_lowp(format!("downloading {url}"));
+
     let response = cu::co::spawn(client()?
     .get(url)
         .send());
     let mut writer = cu::fs::buf_writer(path)?;
-    let mut response = cu::check!(response.co_join().await?, "GET {url} failed")?;
+    let mut response = response.co_join().await??;
 
-    while let Some(chunk) = cu::check!(response.chunk().await, "GET {url} failed to receive chunk")? {
-        cu::check!(writer.write_all(&chunk), "GET {url} failed to save file to '{}'", path.display())?;
+    while let Some(chunk) = response.chunk().await? {
+        writer.write_all(&chunk)?;
     }
     drop(bar);
 
-    cu::check!(writer.flush(), "GET {url} failed to flush to file '{}'", path.display())?;
+    writer.flush()?;
+    let hash = util::co_sha256(path).await?;
+    cu::ensure!(hash == sha256, "downloaded file did not match expected hash");
+
     Ok(())
 }
 
