@@ -13,4 +13,4 @@ sysinfo = "0.37.2"
 tokio = "1"
 
 [target.'cfg(windows)'.dependencies]
-winreg = "0.55.0"
+win-envedit.path = "../win-envedit"

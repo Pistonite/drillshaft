@@ -23,12 +23,33 @@ pub fn init(path: PathBuf) {
     }
 }
 
-fn home() -> &'static Path {
+pub fn home() -> &'static Path {
     HOME_PATH.get().expect("home not initialized; please debug with -vv")
+}
+
+pub fn shaft_binary() -> PathBuf {
+    if cfg!(windows) {
+        home().join("shaft.exe")
+    } else {
+        home().join("shaft")
+    }
+}
+
+pub fn shaft_binary_old() -> PathBuf {
+    if cfg!(windows) {
+        home().join("shaft.old.exe")
+    } else {
+        home().join("shaft.old")
+    }
 }
 
 pub fn env_json() -> PathBuf {
     home().join("environment.json")
+}
+
+/// Get the `init` directory
+pub fn init_dir() -> PathBuf {
+    home().join("init")
 }
 
 /// Get the `bin` directory

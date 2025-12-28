@@ -13,13 +13,5 @@ pub use main_thread::*;
 pub mod util;
 pub mod home;
 pub mod sysinfo;
+pub mod shell_profile;
 
-mod init_impl {
-    use cu::pre::*;
-    /// Init all systems
-    pub fn init() -> cu::Result<()> {
-        // cu::check!(crate::sysinfo::init(), "failed to init sysinfo")?;
-        Ok(())
-    }
-}
-pub use init_impl::*;

@@ -2,6 +2,8 @@ use std::path::{Path, PathBuf};
 
 use cu::pre::*;
 
+use op::shell_profile::ShellProfile;
+
 pub fn check_init_home() -> cu::Result<()> {
     let home_path_str = cu::env_var("SHAFT_HOME")?;
     let home_path = Path::new(&home_path_str).normalize()?;
@@ -69,15 +71,34 @@ pub fn check_init_home() -> cu::Result<()> {
     if !cu::yesno!("create home directory at '{}'?", home.display())? {
         cu::bail!("setup cancelled");
     }
+
+    // we want to prompt this before creating the directory, so it's not too awkward
+    // if user cancels
+    #[cfg(windows)]
+    let add_to_system = loop {
+        cu::info!("adding SHAFT_HOME to environment variables...");
+        let mut answer = cu::prompt!("do you want to add it to the environment for the SYSTEM, or the current USER? [enter SYSTEM or USER]")?;
+        answer.make_ascii_uppercase();
+        match answer.as_str() {
+            "SYSTEM" => break true,
+            "USER" => break false,
+            _ => {}
+        }
+        cu::error!("please enter SYSTEM or USER, Ctrl-C to abort");
+    };
+
     cu::check!(cu::fs::make_dir_empty(&home), "failed to create home directory")?;
     cu::info!("home directory created!");
 
-    op::home::init(home.normalize()?);
+    let home = home.normalize()?;
+    op::home::init(home.clone());
 
-    let init_dir = home.join("init");
-    create_init_bash(&home, &init_dir)?;
-    create_init_pwsh(&home, &init_dir)?;
+    let shell_profile = ShellProfile::default();
+    cu::check!(shell_profile.save(), "failed to create init scripts")?;
     cu::info!("init scripts created!");
+
+    let home_str = home.as_utf8()?;
+
     if cfg!(windows) {
         // CurrentUserAllHosts is for all hosts that run powershell, (for example, different
         // terminals, VS Code, etc...
@@ -88,24 +109,55 @@ pub fn check_init_home() -> cu::Result<()> {
 . $env:SHAFT_HOME\init\init.pwsh
 "
     );
-
-        // we only need 
     } else {
         cu::hint!(
             r"please add the following to your (bash) profile
 
 # shaft init script
-. {}/init/init.pwsh
-", home.as_utf8()?
+. {}/init/init.bash
+", home_str
         );
     }
-
-
-
-        if let Ok(false) = cu::fs::is_empty_dir(&user_selected_home) {
-            cu::bail!("selected SHAFT_HOME is a non-empty directory");
+    #[cfg(windows)]
+    {
+        fn prepend_path(path: &str) -> Option<String> {
+            let parts = path.split(',').collect::<Vec<_>>();
+            let home_part = "%SHAFT_HOME%";
+            let bin_part = "%SHAFT_HOME%\\bin";
+            let has_home = parts.iter().any(|x| x.trim().to_ascii_uppercase() == home_part);
+            let has_bin = parts.iter().any(|x| x.trim().to_ascii_uppercase() == "%SHAFT_HOME%\\BIN");
+            if has_home && has_bin {
+                return None;
+            }
+            let mut new_path = String::new();
+            if !has_home {
+                new_path.push_str(home_part);
+                new_path.push(';');
+            }
+            if !has_bin {
+                new_path.push_str(bin_part);
+                new_path.push(';');
+            }
+            new_path.push_str(path);
+            Some(new_path)
         }
-    todo!()
+        if add_to_system {
+            op::env_mod::windows::set_system("SHAFT_HOME", home_str)?;
+            let path = op::env_mod::windows::get_system("PATH")?;
+            if let Some(path) = prepend_path(&path) {
+                op::env_mod::windows::set_system("PATH", &path)?;
+            }
+        } else {
+            op::env_mod::windows::set_user("SHAFT_HOME", home_str)?;
+            let path = op::env_mod::windows::get_user("PATH")?;
+            if let Some(path) = prepend_path(&path) {
+                op::env_mod::windows::set_user("PATH", &path)?;
+            }
+        }
+        cu::info!("SHAFT_HOME and PATH environment variable set");
+    }
+    op::env_mod::add_assert([("SHAFT_HOME".to_string(), home_str.to_string())])?;
+    op::env_mod::require_reinvocation(false)
 }
 
 fn prompt_user_input_for_home(default_home: &Path) -> cu::Result<PathBuf> {
@@ -131,26 +183,4 @@ fn prompt_user_input_for_home(default_home: &Path) -> cu::Result<PathBuf> {
     }
 
     Ok(user_selected_home)
-}
-
-fn create_init_bash(home: &Path, init_dir: &Path) -> cu::Result<()> {
-    let init_bash = init_dir.join("init.bash");
-    let content = format!(r#"# init/init.bash
-# this file is managed by the tool, do not edit manually
-export SHAFT_HOME="{}"
-export PATH="$SHAFT_HOME:$SHAFT_HOME/bin:$PATH"
-# ===
-    "#, home.as_utf8()?);
-    cu::fs::write(init_bash, content)?;
-    Ok(())
-}
-
-fn create_init_pwsh(_: &Path, init_dir: &Path) -> cu::Result<()> {
-    let init_pwsh = init_dir.join("init.pwsh");
-    let content = r#"# init/init.pwsh
-# this file is managed by the tool, do not edit manually
-# ===
-    "#;
-    cu::fs::write(init_pwsh, content)?;
-    Ok(())
 }

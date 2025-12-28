@@ -1155,9 +1155,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pistonite-cu"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83d46de42fac90f933ad76c149bb2a18d7f62e953052d13d36c21d22401ef194"
+version = "0.6.4"
 dependencies = [
  "anyhow",
  "clap",
@@ -1185,18 +1183,14 @@ dependencies = [
 
 [[package]]
 name = "pistonite-cu-proc-macros"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8259c7f39f557b77fa98461b2ff93b389c13a0e3e4df812bfd357f401c79f80"
+version = "0.2.0"
 dependencies = [
  "pistonite-pm",
 ]
 
 [[package]]
 name = "pistonite-pm"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee2ba22b8a7a80f566c7abadedc92b87d0cbdc8d558eeecacb325a21cd00f4fa"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1527,6 +1521,7 @@ dependencies = [
 name = "shaft-cli"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "pistonite-cu",
  "serde",
  "shaft-op",
@@ -1543,7 +1538,7 @@ dependencies = [
  "sha2",
  "sysinfo",
  "tokio",
- "winreg",
+ "win-envedit",
 ]
 
 [[package]]

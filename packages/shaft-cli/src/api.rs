@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use cu::pre::*;
 
 static LOGO: &'static str = r" ______ __  __ ______ ______ ______  
@@ -8,22 +10,64 @@ static LOGO: &'static str = r" ______ __  __ ______ ______ ______
 
 /// The component that keeps machine running
 #[derive(clap::Parser, Debug, AsRef, Serialize, Deserialize)]
-#[clap(
-    version,
-    before_help = LOGO
-)]
+#[clap(before_help = LOGO)]
 pub struct CliApi {
     /// If a command was interrupted previously, discard it
     #[clap(short = 'A', long)]
     pub abort_previous: bool,
     #[clap(subcommand)]
-    #[as_ref(cu::cli::Flags)]
-    pub command: CliCommand,
+    pub command: Option<CliCommand>,
+    #[as_ref]
+    #[serde(skip)]
+    #[clap(flatten)]
+    flags: cu::cli::Flags,
+
+    /// Same as the version subcommand, -v to run self-check
+    #[clap(short = 'V', long)]
+    version: bool,
 }
 impl CliApi {
-    pub fn run(self) -> cu::Result<()> {
+    pub fn preprocess(&mut self) {
+        if let Some(command) = &self.command {
+            self.flags.merge(command.as_ref());
+        }
+    }
+    pub async fn run(self) -> cu::Result<()> {
+        let run_version = self.version || matches!(&self.command, Some(CliCommand::Version(_)));
+        if run_version {
+            cu::disable_print_time();
+            println!("{}", clap::crate_version!());
+            if !cu::log_enabled(cu::lv::D) {
+                return Ok(())
+            }
+        }
         cu::trace!("args: {self:#?}");
-        op::init_platform()?;
+        cu::check!(op::init_platform(), "failed to init platform")?;
+        cu::check!(crate::init::check_init_home(), "failed to init home")?;
+        cu::check!(op::env_mod::init_env(), "failed to init environment")?;
+        cu::check!(crate::init::check_init_binary(), "failed to init binary")?;
+
+        if run_version {
+            cu::info!("self-check OK");
+            return Ok(());
+        }
+
+        let Some(command) = self.command else {
+            cu::disable_print_time();
+            cu::cli::print_help::<Self>(false);
+            return Ok(())
+        };
+
+        match command {
+            CliCommand::Version(_) => {},
+            CliCommand::Upgrade(cmd) => cmd.run().await?,
+            CliCommand::Sync(_) => todo!(),
+            CliCommand::Remove(_) => todo!(),
+            CliCommand::Config(_) => todo!(),
+            CliCommand::Clean(_) => todo!(),
+            CliCommand::Resume(_) => todo!(),
+        }
+
         Ok(())
     }
 }
@@ -31,7 +75,7 @@ impl CliApi {
 #[derive(clap::Subcommand, Debug, Serialize, Deserialize)]
 pub enum CliCommand {
     /// Upgrade this binary to the latest version
-    Upgrade(#[serde(skip)] cu::cli::Flags),
+    Upgrade(CliCommandUpgrade),
     /// Install or update package(s)
     Sync(CliCommandSync),
     /// Remove package(s)
@@ -42,17 +86,37 @@ pub enum CliCommand {
     Clean(CliCommandClean),
     /// Resume previous operation, if one was interrupted
     Resume(#[serde(skip)]cu::cli::Flags),
+    /// Print the version, -v to run self-check
+    Version(#[serde(skip)]cu::cli::Flags),
 }
 impl AsRef<cu::cli::Flags> for CliCommand {
     fn as_ref(&self) -> &cu::cli::Flags {
         match self {
-            CliCommand::Upgrade(x) => x,
+            CliCommand::Upgrade(x) => x.as_ref(),
             CliCommand::Sync(x) => x.as_ref(),
             CliCommand::Remove(x) => x.as_ref(),
             CliCommand::Config(x) => x.as_ref(),
             CliCommand::Clean(x) => x.as_ref(),
             CliCommand::Resume(x) => x,
+            CliCommand::Version(x) => x,
         }
+    }
+}
+
+#[derive(clap::Parser, Debug, AsRef, Serialize, Deserialize)]
+pub struct CliCommandUpgrade {
+    /// Build and install from this path, instead of from upstream
+    #[clap(short, long)]
+    pub path: Option<String>,
+    #[clap(flatten)]
+    #[as_ref]
+    #[serde(skip)]
+    pub flags: cu::cli::Flags,
+}
+
+impl CliCommandUpgrade {
+    async fn run(&self) -> cu::Result<()> {
+        crate::init::upgrade_binary(self.path.as_ref().map(Path::new)).await
     }
 }
 

@@ -4,16 +4,20 @@ members = [
     "packages/shaft-build",
     "packages/shaft-cli",
     "packages/shaft-op",
-    "packages/shaft-registry", "packages/win-envedit", "packages/win-pathedit",
+    "packages/shaft-registry",
+    "packages/win-envedit",
+    "packages/win-pathedit",
 ]
 
 [workspace.dependencies.cu]
 package = "pistonite-cu"
-version = "0.6.1"
+# path = "../cu/packages/copper"
+version = "0.6.4"
 
 [workspace.dependencies.pm]
 package = "pistonite-pm"
-version = "0.1.4"
+# path = "../cu/packages/promethium"
+version = "0.2.0"
 default-features = false
 
 [workspace.dependencies.op]
