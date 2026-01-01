@@ -200,7 +200,7 @@ impl Platform {
     }
     pub fn linux_flavors(self) -> &'static str {
         match self {
-            Self::Linux => "op::LinuxFlavor::all()",
+            Self::Any | Self::Linux => "op::LinuxFlavor::all()",
             Self::LinuxPacman => "enum_set!{ op::LinuxFlavor::Pacman }",
             Self::LinuxApt => "enum_set!{ op::LinuxFlavor::Apt }",
             _ => "op::LinuxFlavor::none()",

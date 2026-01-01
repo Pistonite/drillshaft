@@ -94,7 +94,13 @@ impl RegistryBuilder {
         build_bin_providers(&pascal_bins, &kebab_bins, &pascal_pkgs, &modules, &mut out)?;
         writeln!(out, "        }}\n    }}\n}}")?;
 
-        build_package_modules(&self.packages, &snake_pkgs, &modules, &self.registry_path, &mut out)?;
+        build_package_modules(
+            &self.packages,
+            &snake_pkgs,
+            &modules,
+            &self.registry_path,
+            &mut out,
+        )?;
 
         Ok(out)
     }
@@ -120,24 +126,44 @@ fn build_metadata_array(
                 continue;
             }
             build_metadata_for_module(
-                snake_name, kebab_name, *platform, platform.linux_flavors(), false, data, out
+                snake_name,
+                kebab_name,
+                *platform,
+                platform.linux_flavors(),
+                false,
+                data,
+                out,
             )?;
         }
         if !linux_flavors.is_empty() {
-            let linux_flavors = format!("enum_set!{{ {} }}", linux_flavors.iter().map(|x|x.linux_flavor()).join(" | "));
+            let linux_flavors = format!(
+                "enum_set!{{ {} }}",
+                linux_flavors.iter().map(|x| x.linux_flavor()).join(" | ")
+            );
             let mut doc: Vec<String> = vec![];
             for data in linux_flavors_data {
                 let next_doc = &data.doc;
                 if !next_doc.is_empty() {
                     if !doc.is_empty() {
-                        cu::bail!("only one linux flavor should specify description, in package '{kebab_name}'");
+                        cu::bail!(
+                            "only one linux flavor should specify description, in package '{kebab_name}'"
+                        );
                     }
                     doc = next_doc.clone();
                 }
             }
-            let temp_data = ModuleData { doc, ..Default::default()};
+            let temp_data = ModuleData {
+                doc,
+                ..Default::default()
+            };
             build_metadata_for_module(
-                snake_name, kebab_name, Platform::Linux, &linux_flavors, true, &temp_data, out
+                snake_name,
+                kebab_name,
+                Platform::Linux,
+                &linux_flavors,
+                true,
+                &temp_data,
+                out,
             )?;
         }
         let mut platforms: BTreeSet<Platform> = module.platform_data.keys().copied().collect();
@@ -207,10 +233,7 @@ fn build_metadata_for_module(
             "        binary_dependencies_fn: {module_path}::binary_dependencies,"
         )?;
     } else {
-        writeln!(
-            out,
-            "        binary_dependencies_fn: _stub::empty_bin_set,"
-        )?;
+        writeln!(out, "        binary_dependencies_fn: _stub::empty_bin_set,")?;
     }
     if is_linux_mux || data.has_config_dependencies {
         writeln!(
@@ -218,30 +241,24 @@ fn build_metadata_for_module(
             "        config_dependencies_fn: {module_path}::config_dependencies,"
         )?;
     } else {
-        writeln!(
-            out,
-            "        config_dependencies_fn: _stub::empty_pkg_set,"
-        )?;
+        writeln!(out, "        config_dependencies_fn: _stub::empty_pkg_set,")?;
     }
-    if is_linux_mux||data.has_download {
-        writeln!(
-            out,
-            "        download_fn: {module_path}::download,"
-        )?;
+    if is_linux_mux || data.has_download {
+        writeln!(out, "        download_fn: {module_path}::download,")?;
     } else {
         writeln!(out, "        download_fn: _stub::ok,")?;
     }
-    if is_linux_mux||data.has_build {
+    if is_linux_mux || data.has_build {
         writeln!(out, "        build_fn: {module_path}::build,")?;
     } else {
         writeln!(out, "        build_fn: _stub::ok,")?;
     }
-    if is_linux_mux ||data.has_configure {
+    if is_linux_mux || data.has_configure {
         writeln!(out, "        configure_fn: {module_path}::configure,")?;
     } else {
         writeln!(out, "        configure_fn: _stub::ok,")?;
     }
-    if is_linux_mux||data.has_clean {
+    if is_linux_mux || data.has_clean {
         writeln!(out, "        clean_fn: {module_path}::clean,")?;
     } else {
         writeln!(out, "        clean_fn: _stub::ok,")?;
@@ -395,17 +412,34 @@ fn build_package_modules(
         // since linux flavors can't be decided at compile time,
         // generate a linux module to mux it at runtime
         if !linux_flavors.is_empty() {
-            writeln!(out, "{} mod _pkg_{}{} {{", Platform::Linux.cfg_attr(), name, Platform::Linux.module_str())?;
+            writeln!(
+                out,
+                "{} mod _pkg_{}{} {{",
+                Platform::Linux.cfg_attr(),
+                name,
+                Platform::Linux.module_str()
+            )?;
             {
-                writeln!(out, "    pub fn binaries() -> enumset::EnumSet<super::BinId> {{ match op::linux_flavor() {{")?;
+                writeln!(
+                    out,
+                    "    pub fn binaries() -> enumset::EnumSet<super::BinId> {{ match op::linux_flavor() {{"
+                )?;
                 for platform in &linux_flavors {
-                    let data = cu::check!(parsed.platform_data.get(&platform), "failed to get module data for platform '{platform}', package '{name}'")?;
+                    let data = cu::check!(
+                        parsed.platform_data.get(&platform),
+                        "failed to get module data for platform '{platform}', package '{name}'"
+                    )?;
                     let binaries = data
                         .kebab_binaries
                         .iter()
                         .map(|x| format!("super::BinId::{}", util::kebab_to_pascal(x)))
                         .join(" | ");
-                    writeln!(out, "        {} => enumset::enum_set!{{ {} }},", platform.linux_flavor(), binaries)?;
+                    writeln!(
+                        out,
+                        "        {} => enumset::enum_set!{{ {} }},",
+                        platform.linux_flavor(),
+                        binaries
+                    )?;
                 }
                 writeln!(out, "        _ => Default::default(),")?;
                 writeln!(out, "    }} }}")?;
@@ -413,13 +447,27 @@ fn build_package_modules(
             macro_rules! write_unreachable_match_arm {
                 () => {
                     writeln!(out, "        _ => cu::bail!(\"unreachable\")")
-                }
+                };
             }
             for fn_name in ["verify", "install", "uninstall"] {
-                let retty = if fn_name == "verify" {"crate::Verified"} else {"()"};
-                writeln!(out, "    pub fn {fn_name}(ctx: &crate::Context) -> cu::Result<{retty}> {{ match op::linux_flavor() {{")?;
+                let retty = if fn_name == "verify" {
+                    "crate::Verified"
+                } else {
+                    "()"
+                };
+                writeln!(
+                    out,
+                    "    pub fn {fn_name}(ctx: &crate::Context) -> cu::Result<{retty}> {{ match op::linux_flavor() {{"
+                )?;
                 for platform in &linux_flavors {
-                    writeln!(out, "        {} => super::_pkg_{}{}::{}(ctx),", platform.linux_flavor(), name, platform.module_str(), fn_name)?;
+                    writeln!(
+                        out,
+                        "        {} => super::_pkg_{}{}::{}(ctx),",
+                        platform.linux_flavor(),
+                        name,
+                        platform.module_str(),
+                        fn_name
+                    )?;
                 }
                 // the package functions will check the flavor before invoking vtable functions,
                 // so the other platforms are not reachable
@@ -447,21 +495,47 @@ fn build_package_modules(
             write_optional_function!("clean", has_clean);
             macro_rules! write_dependency_function {
                 ($fn_name:literal, $has_ident:ident, $retty:literal) => {
-                    writeln!(out, "    pub fn {}() -> {} {{ match op::linux_flavor() {{", $fn_name, $retty)?;
+                    writeln!(
+                        out,
+                        "    pub fn {}() -> {} {{ match op::linux_flavor() {{",
+                        $fn_name, $retty
+                    )?;
                     for platform in &linux_flavors {
-                        let platform_data = cu::check!(parsed.platform_data.get(&platform), "failed to get module data for platform '{platform}', package '{name}'")?;
+                        let platform_data = cu::check!(
+                            parsed.platform_data.get(&platform),
+                            "failed to get module data for platform '{platform}', package '{name}'"
+                        )?;
                         if platform_data.$has_ident {
-                            writeln!(out, "        {} => super::_pkg_{}{}::{}(),", platform.linux_flavor(), name, platform.module_str(), $fn_name)?;
+                            writeln!(
+                                out,
+                                "        {} => super::_pkg_{}{}::{}(),",
+                                platform.linux_flavor(),
+                                name,
+                                platform.module_str(),
+                                $fn_name
+                            )?;
                         } else {
-                            writeln!(out, "        {} => Default::default(),", platform.linux_flavor())?;
+                            writeln!(
+                                out,
+                                "        {} => Default::default(),",
+                                platform.linux_flavor()
+                            )?;
                         }
                     }
                     writeln!(out, "        _ => Default::default(),")?;
                     writeln!(out, "    }} }}")?;
-                }
+                };
             }
-            write_dependency_function!("binary_dependencies", has_binary_dependencies, "enumset::EnumSet<super::BinId>");
-            write_dependency_function!("config_dependencies", has_config_dependencies, "enumset::EnumSet<super::PkgId>");
+            write_dependency_function!(
+                "binary_dependencies",
+                has_binary_dependencies,
+                "enumset::EnumSet<super::BinId>"
+            );
+            write_dependency_function!(
+                "config_dependencies",
+                has_config_dependencies,
+                "enumset::EnumSet<super::PkgId>"
+            );
 
             writeln!(out, "}}")?;
         }

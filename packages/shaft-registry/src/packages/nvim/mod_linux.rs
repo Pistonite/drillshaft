@@ -1,5 +1,6 @@
 use cu::pre::*;
 use enumset::EnumSet;
+use op::Version;
 
 use crate::pre::*;
 
@@ -34,11 +35,11 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
         cu::warn!("nvim --version returned unexpected output: {stdout}");
         return Ok(Verified::NotUpToDate);
     };
-    if !version.is_version_same_or_higher_than(VERSION) {
-        return Ok(Verified::NotUpToDate);
+    if Version(version) >= VERSION {
+       return Ok(Verified::UpToDate);
     }
     
-    Ok(Verified::UpToDate)
+    Ok(Verified::NotUpToDate)
 }
 
 pub fn install(_: &Context) -> cu::Result<()> {

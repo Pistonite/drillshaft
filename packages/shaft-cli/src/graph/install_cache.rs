@@ -69,6 +69,13 @@ impl InstallCache {
 
         Ok(())
     }
+
+    pub fn add_to_installed(&mut self, pkg: PkgId) {
+        self.pkgs.insert(pkg);
+        for bin in pkg.package().binaries() {
+            self.bins[bin] = Some(pkg);
+        }
+    }
 }
 
 impl From<&InstallCacheJson> for InstallCache {

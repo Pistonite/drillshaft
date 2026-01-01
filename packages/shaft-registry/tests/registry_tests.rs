@@ -17,6 +17,9 @@ fn test_descriptions_for_all_packages() {
         if !package.enabled {
             continue;
         }
-        assert!(!package.short_desc.is_empty(), "package '{pkg}' is missing docs");
+        assert!(
+            !package.short_desc.is_empty(),
+            "package '{pkg}' is missing docs"
+        );
     }
 }

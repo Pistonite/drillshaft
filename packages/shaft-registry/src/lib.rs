@@ -137,6 +137,7 @@ impl Package {
 
     /// Verify the package is installed and up-to-date
     #[inline(always)]
+    #[cu::error_ctx("failed to verify package status for '{}'", ctx.pkg)]
     pub fn verify(&self, ctx: &Context) -> cu::Result<Verified> {
         #[cfg(target_os = "linux")]
         {
@@ -147,9 +148,9 @@ impl Package {
         (self.verify_fn)(ctx)
     }
 
-    /// Download the package. This is async and could be executed in parallel
-    /// for multiple packages
+    /// Download the package, may use cache
     #[inline(always)]
+    #[cu::error_ctx("failed to download '{}'", ctx.pkg)]
     pub fn download(&self, ctx: &Context) -> cu::Result<()> {
         (self.download_fn)(ctx)
     }
@@ -158,30 +159,35 @@ impl Package {
     /// This should not have side effects besides modify the downloaded
     /// package itself. It's not executed in parallel.
     #[inline(always)]
+    #[cu::error_ctx("failed to build '{}'", ctx.pkg)]
     pub fn build(&self, ctx: &Context) -> cu::Result<()> {
         (self.build_fn)(ctx)
     }
 
-    /// Install the package - after download
+    /// Install the package - after download and build
     #[inline(always)]
+    #[cu::error_ctx("failed to install '{}'", ctx.pkg)]
     pub fn install(&self, ctx: &Context) -> cu::Result<()> {
         (self.install_fn)(ctx)
     }
 
     /// Configure the package after installing
     #[inline(always)]
+    #[cu::error_ctx("failed to configure '{}'", ctx.pkg)]
     pub fn configure(&self, ctx: &Context) -> cu::Result<()> {
         (self.configure_fn)(ctx)
     }
 
     /// Clean up temporary files for the package. Does not uninstall it
     #[inline(always)]
+    #[cu::error_ctx("failed to clean '{}'", ctx.pkg)]
     pub fn clean(&self, ctx: &Context) -> cu::Result<()> {
         (self.clean_fn)(ctx)
     }
 
     /// Uninstall the package
     #[inline(always)]
+    #[cu::error_ctx("failed to uninstall '{}'", ctx.pkg)]
     pub fn uninstall(&self, ctx: &Context) -> cu::Result<()> {
         (self.uninstall_fn)(ctx)
     }

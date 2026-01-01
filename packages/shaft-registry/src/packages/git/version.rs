@@ -1,4 +1,5 @@
 use cu::pre::*;
+use op::Version;
 
 use crate::pre::*;
 
@@ -17,7 +18,7 @@ pub fn verify(min_version: &str) -> cu::Result<Verified> {
     let stdout = stdout.join()??;
     let version = stdout.strip_prefix("git version ").unwrap_or(&stdout);
 
-    if version.is_version_same_or_higher_than(min_version) {
+    if Version(version) >= min_version {
         Ok(Verified::UpToDate)
     }
     else {

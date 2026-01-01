@@ -192,11 +192,7 @@ pub struct CliCommandSync {
 }
 impl CliCommandSync {
     fn run(&self) -> cu::Result<()> {
-        let pkgs = crate::graph::parse_pkgs(&self.packages)?;
-        let installed = crate::graph::InstallCache::load()?;
-        let graph = crate::graph::build_sync_graph(pkgs, &installed)?;
-        cu::info!("{graph:?}");
-        Ok(())
+        crate::cmds::sync(&self.packages)
     }
 }
 
