@@ -219,8 +219,38 @@ impl Package {
     }
 
     #[inline(always)]
+    pub fn backup_guard<'a, 'b>(&'a self, ctx: &'b Context) -> cu::Result<PackageRestoreGuard<'a, 'b>> {
+        self.backup(ctx)?;
+        Ok(PackageRestoreGuard::new(self, ctx))
+    }
+
+    #[inline(always)]
     #[cu::error_ctx("failed to restore '{}'", ctx.pkg)]
-    pub fn restore(&self, ctx: &Context) -> cu::Result<()> {
+    fn restore(&self, ctx: &Context) -> cu::Result<()> {
         (self.restore_fn)(ctx)
+    }
+}
+
+pub struct PackageRestoreGuard<'a, 'b>{
+package: &'a Package, 
+    context: &'b Context,
+needs_restore:bool}
+impl<'a, 'b> PackageRestoreGuard<'a, 'b> {
+    pub fn new(package: &'a Package, context: &'b Context) -> Self {
+        Self{package, context, needs_restore: true}
+    }
+    /// Clear the guard without restoring the package
+    pub fn clear(&mut self) {
+        self.needs_restore = false;
+    }
+}
+
+impl<'a, 'b> Drop for PackageRestoreGuard<'a, 'b> {
+    fn drop(&mut self) {
+        if self.needs_restore {
+            if let Err(e) = self.package.restore(&self.context) {
+                cu::error!("failed to restore package '{}': {:?}", self.context.pkg, e);
+            }
+        }
     }
 }

@@ -12,6 +12,7 @@ pub fn check(expected_version: &str) -> cu::Result<Verified> {
         if Version(version) >= expected_version {
             return Ok(Verified::UpToDate);
         }
+        break;
     }
     cu::warn!("failed to parse current version for '7z'");
     Ok(Verified::NotUpToDate)

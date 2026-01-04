@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
@@ -52,6 +53,12 @@ pub fn previous_command_json() -> PathBuf {
     home().join("previous_command.json")
 }
 
+/// HOME/version_cache.json
+#[inline(always)]
+pub fn version_cache_json() -> PathBuf {
+    home().join("version_cache.json")
+}
+
 /// HOME/config.toml
 #[inline(always)]
 pub fn config_toml() -> PathBuf {
@@ -88,6 +95,14 @@ pub fn bin_root() -> PathBuf {
     home().join("bin")
 }
 
+/// HOME/bin/<binary>
+#[inline(always)]
+pub fn binary(file: impl AsRef<Path>) -> PathBuf {
+    let mut bin = bin_root();
+    bin.push(file);
+    bin
+}
+
 /// HOME/temp/
 #[inline(always)]
 pub fn temp_root() -> PathBuf {
@@ -100,6 +115,30 @@ pub fn temp_dir(package: impl AsRef<Path>) -> PathBuf {
     let mut x = temp_root();
     x.push(package);
     x
+}
+
+/// HOME/download/
+#[inline(always)]
+pub fn download_root() -> PathBuf {
+    home().join("download")
+}
+
+/// HOME/download/<identifier_stem>-<url_hash>.<ext>
+pub fn download_file(identifier: &Path, url: &str) -> PathBuf {
+    let hash = fxhash::hash64(url);
+    let mut path_part = OsString::new();
+    if let Some(stem) = identifier.file_stem() {
+        path_part.push(stem);
+        path_part.push("-");
+    }
+    path_part.push(format!("{hash:016x}"));
+    if let Some(ext) = identifier.extension() {
+        path_part.push(".");
+        path_part.push(ext);
+    }
+    let mut path = download_root();
+    path.push(path_part);
+    path
 }
 
 #[inline(always)]

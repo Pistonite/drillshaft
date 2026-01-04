@@ -5,12 +5,7 @@ pub mod hmgr;
 /// Operating/File System
 pub mod opfs;
 
-mod version;
-pub use version::*;
-mod download;
-pub use download::*;
-
-pub mod util;
+pub use hmgr::{ShellProfile, Version};
 
 pub(crate) mod internal;
 

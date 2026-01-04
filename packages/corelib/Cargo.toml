@@ -8,7 +8,8 @@ publish = false
 cu = { workspace = true, features = ["process", "json", "derive", "prompt-password"] }
 enumset.workspace = true
 fs2 = "0.4.3"
-reqwest = { version = "0.12.24", features = ["gzip"] }
+fxhash = "0.2.1"
+reqwest = { version = "0.12.24", features = ["blocking", "gzip"] }
 serde = "1"
 sha2 = "0.10.9"
 shell-words = "1.1.1"

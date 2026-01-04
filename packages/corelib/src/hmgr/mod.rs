@@ -7,3 +7,7 @@ mod environment;
 pub use environment::*;
 mod lock;
 pub use lock::*;
+mod version;
+pub use version::*;
+mod download;
+pub use download::*;

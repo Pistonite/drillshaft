@@ -13,6 +13,21 @@ macro_rules! check_bin_in_path {
 }
 pub(crate) use check_bin_in_path;
 
+macro_rules! check_bin_in_path_and_shaft {
+    ($bin:literal) => {{
+        match cu::which($bin) {
+            Err(_) => return Ok(Verified::NotInstalled),
+            Ok(path) => {
+                if path != corelib::hmgr::paths::binary(corelib::bin_name!($bin)) {
+                    cu::bail!("found existing '{}' installed outside of shaft, please uninstall it first", $bin);
+                }
+                path
+            }
+        }
+    }}
+}
+pub(crate) use check_bin_in_path_and_shaft;
+
 #[cfg(target_os = "linux")]
 macro_rules! check_installed_with_pacman {
     ($l:literal) => {

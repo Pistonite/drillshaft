@@ -74,7 +74,7 @@ fn do_remove_package(pkg: PkgId) -> cu::Result<()> {
     let bar = cu::progress_bar(4, format!("remove '{pkg}'"));
 
     cu::progress!(&bar, 0, "backup");
-    package.backup(&ctx)?;
+    let mut backup_guard = package.backup_guard(&ctx)?;
     cu::progress!(&bar, 1, "cleaning");
     package.clean(&ctx)?;
     cu::progress!(&bar, 2, "uninstalling");
@@ -84,14 +84,14 @@ fn do_remove_package(pkg: PkgId) -> cu::Result<()> {
     match package.verify(&ctx)? {
         Verified::NotInstalled => {
             cu::progress_done!(&bar, "removed '{pkg}'");
+            backup_guard.clear();
             return Ok(());
         }
         _ => {
             cu::error!("uninstalling not successful for '{pkg}', restoring...");
         }
     }
-    cu::progress!(&bar, 2, "restoring");
-    package.restore(&ctx)?;
+    drop(backup_guard);
     drop(bar);
     cu::warn!(
         "package '{pkg}' is not removed - recommend to sync all packages to ensure a consistent state"
