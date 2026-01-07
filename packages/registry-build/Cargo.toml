@@ -1,5 +1,6 @@
 [package]
 name = "shaft-registry-build"
+description = "build script for the shaft registry"
 version = "0.0.0"
 edition = "2024"
 publish = false

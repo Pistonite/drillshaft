@@ -132,18 +132,20 @@ impl Package {
                 ctx.pkg
             );
         }
-        // due to file cache, this could randomly fail
-        let mut error = None;
-        for _ in 0..3 {
-            let e = match (self.verify_fn)(ctx) {
-                Ok(x) => return Ok(x),
-                Err(e) => e,
-            };
-            cu::debug!("failed to verify '{}': {:?}", ctx.pkg, e);
-            std::thread::sleep(Duration::from_secs(1));
-            error = Some(e);
-        }
-        Err(error.unwrap())
+        (self.verify_fn)(ctx)
+        // retry needed?
+        //
+        // let mut error = None;
+        // for _ in 0..3 {
+        //     let e = match (self.verify_fn)(ctx) {
+        //         Ok(x) => return Ok(x),
+        //         Err(e) => e,
+        //     };
+        //     cu::debug!("failed to verify '{}': {:?}", ctx.pkg, e);
+        //     std::thread::sleep(Duration::from_secs(1));
+        //     error = Some(e);
+        // }
+        // Err(error.unwrap())
     }
 
     #[inline(always)]
@@ -219,7 +221,10 @@ impl Package {
     }
 
     #[inline(always)]
-    pub fn backup_guard<'a, 'b>(&'a self, ctx: &'b Context) -> cu::Result<PackageRestoreGuard<'a, 'b>> {
+    pub fn backup_guard<'a, 'b>(
+        &'a self,
+        ctx: &'b Context,
+    ) -> cu::Result<PackageRestoreGuard<'a, 'b>> {
         self.backup(ctx)?;
         Ok(PackageRestoreGuard::new(self, ctx))
     }
@@ -231,13 +236,18 @@ impl Package {
     }
 }
 
-pub struct PackageRestoreGuard<'a, 'b>{
-package: &'a Package, 
+pub struct PackageRestoreGuard<'a, 'b> {
+    package: &'a Package,
     context: &'b Context,
-needs_restore:bool}
+    needs_restore: bool,
+}
 impl<'a, 'b> PackageRestoreGuard<'a, 'b> {
     pub fn new(package: &'a Package, context: &'b Context) -> Self {
-        Self{package, context, needs_restore: true}
+        Self {
+            package,
+            context,
+            needs_restore: true,
+        }
     }
     /// Clear the guard without restoring the package
     pub fn clear(&mut self) {

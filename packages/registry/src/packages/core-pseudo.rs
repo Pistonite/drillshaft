@@ -6,16 +6,16 @@ use crate::pre::*;
 register_binaries!("sudo", "cargo");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    if let Err(e) = cu::which("sudo") {
+    if let Err(e) = opfs::which_sudo() {
         cu::error!("sudo not found: {e:?}");
         if cfg!(windows) {
-            cu::hint!("sudo is required; please install sudo with your system package manager.");
-        } else {
             cu::hint!("sudo is required.");
             cu::hint!("please refer to the following link to enable it on Windows");
             cu::hint!("https://learn.microsoft.com/en-us/windows/advanced-settings/sudo");
+        } else {
+            cu::hint!("sudo is required; please install sudo with your system package manager.");
         }
-        cu::bail!("requirement not satisfied: sudo not found in PATH");
+        cu::bail!("requirement not satisfied: sudo not found");
     }
     cu::debug!("sudo is found");
     if let Err(e) = cu::which("cargo") {

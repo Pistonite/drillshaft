@@ -46,16 +46,18 @@ fn do_sync_package(pkg: PkgId) -> cu::Result<()> {
             cu::debug!("needs update: '{pkg}'");
             true
         }
-        Verified::NotInstalled => { false }
+        Verified::NotInstalled => false,
     };
-    let total = if needs_backup { 6 }else {5};
+    let total = if needs_backup { 6 } else { 5 };
     let bar = cu::progress_bar(total, format!("sync '{pkg}'"));
     let mut i = 0;
     let backup_guard = if needs_backup {
         cu::progress!(&bar, i, "backup");
         i += 1;
         Some(package.backup_guard(&ctx)?)
-    } else { None };
+    } else {
+        None
+    };
 
     cu::progress!(&bar, i, "downloading");
     i += 1;

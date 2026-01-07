@@ -26,7 +26,7 @@ fn home() -> &'static Path {
 /// HOME/install_cache.json
 #[inline(always)]
 pub fn install_cache_json() -> PathBuf {
-    home().join("install_cache_json")
+    home().join("install_cache.json")
 }
 
 /// HOME/shaft or HOME/shaft.exe
@@ -117,6 +117,34 @@ pub fn temp_dir(package: impl AsRef<Path>) -> PathBuf {
     x
 }
 
+/// HOME/install/
+#[inline(always)]
+pub fn install_root() -> PathBuf {
+    home().join("install")
+}
+
+/// HOME/install/<package>
+#[inline(always)]
+pub fn install_dir(package: impl AsRef<Path>) -> PathBuf {
+    let mut x = install_root();
+    x.push(package);
+    x
+}
+
+/// HOME/install-old/
+#[inline(always)]
+pub fn install_old_root() -> PathBuf {
+    home().join("install-old")
+}
+
+/// HOME/install-old/<package>
+#[inline(always)]
+pub fn install_old_dir(package: impl AsRef<Path>) -> PathBuf {
+    let mut x = install_old_root();
+    x.push(package);
+    x
+}
+
 /// HOME/download/
 #[inline(always)]
 pub fn download_root() -> PathBuf {
@@ -124,7 +152,11 @@ pub fn download_root() -> PathBuf {
 }
 
 /// HOME/download/<identifier_stem>-<url_hash>.<ext>
-pub fn download_file(identifier: &Path, url: &str) -> PathBuf {
+#[inline(always)]
+pub fn download(identifier: impl AsRef<Path>, url: impl AsRef<str>) -> PathBuf {
+    download_file_impl(identifier.as_ref(), url.as_ref())
+}
+fn download_file_impl(identifier: &Path, url: &str) -> PathBuf {
     let hash = fxhash::hash64(url);
     let mut path_part = OsString::new();
     if let Some(stem) = identifier.file_stem() {

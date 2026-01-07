@@ -1,5 +1,6 @@
 [package]
 name = "shaft-registry"
+description = "shaft registry for packages"
 version = "0.0.0"
 edition = "2024"
 publish = false

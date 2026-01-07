@@ -12,6 +12,10 @@ impl Drop for HomeLock {
         if let Err(e) = self.0.unlock() {
             cu::warn!("failed to unlock home directory: {e:?}");
         }
+        let path = hmgr::paths::dot_lock();
+        if let Err(e) = cu::fs::remove(path) {
+            cu::warn!("failed to remove home directory lock file: {e:?}");
+        }
     }
 }
 

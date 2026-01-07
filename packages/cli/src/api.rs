@@ -46,14 +46,19 @@ impl CliApi {
         // unless running 'version', do not allow sudo
         if !run_version {
             if opfs::is_sudo() {
-                cu::bail!("do not run shaft as root, privilege will be escalated automatically if needed.");
+                cu::bail!(
+                    "do not run shaft as root, privilege will be escalated automatically if needed."
+                );
             }
         }
         cu::trace!("args: {self:#?}");
         cu::check!(opfs::init(), "failed to init platform")?;
         cu::check!(crate::init::check_init_home(), "failed to init home")?;
         let config = crate::config::load_config()?;
-        cu::check!(crate::init::check_init_environment(&config), "failed to init environment")?;
+        cu::check!(
+            crate::init::check_init_environment(&config),
+            "failed to init environment"
+        )?;
 
         // this is to make it easier to run the tool in development
         #[cfg(not(debug_assertions))]

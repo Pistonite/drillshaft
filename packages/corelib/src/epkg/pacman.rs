@@ -41,7 +41,7 @@ pub fn install(package_name: &str) -> cu::Result<()> {
     cu::info!("installing '{package_name}' with pacman...");
     sync_database()?;
     let mut state = pacman::instance()?;
-    opfs::sudo("pacman")?
+    opfs::sudo("pacman", &format!("install {package_name}"))?
         .add(cu::args!["-S", package_name, "--noconfirm"])
         .stdout(cu::lv::P)
         .stderr(cu::lv::E)
@@ -59,7 +59,7 @@ fn sync_database() -> cu::Result<()> {
         .db_synced_time
         .is_none_or(|x| x.elapsed() > Duration::from_mins(10))
     {
-        let (child, _, _) = opfs::sudo("pacman")?
+        let (child, _, _) = opfs::sudo("pacman", "sync pacman database")?
             .args(["-Syy", "--noconfirm"])
             .stdoe(cu::pio::spinner("sync pacman database"))
             .stdin_null()
@@ -74,7 +74,7 @@ fn sync_database() -> cu::Result<()> {
 pub fn uninstall(package_name: &str) -> cu::Result<()> {
     cu::info!("uninstalling '{package_name}' with pacman...");
     let mut state = pacman::instance()?;
-    opfs::sudo("pacman")?
+    opfs::sudo("pacman", &format!("uninstall {package_name}"))?
         .add(cu::args!["-R", package_name, "--noconfirm"])
         .stdout(cu::lv::P)
         .stderr(cu::lv::E)

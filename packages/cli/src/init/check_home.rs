@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use cu::pre::*;
 
 use corelib::hmgr::{self, ShellProfile};
+use corelib::opfs;
 
 pub fn check_init_home() -> cu::Result<()> {
     let home_path_str = cu::env_var("SHAFT_HOME")?;
@@ -99,7 +100,14 @@ to see why the auto-mount fails.
         )?;
         answer.make_ascii_uppercase();
         match answer.as_str() {
-            "SYSTEM" => break true,
+            "SYSTEM" => {
+                if !opfs::is_sudo() {
+                    cu::bailfyi!(
+                        "setting system environment variable requires sudo - please run `sudo shaft -vV`"
+                    );
+                }
+                break true;
+            }
             "USER" => break false,
             _ => {}
         }
