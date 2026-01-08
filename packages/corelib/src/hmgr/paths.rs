@@ -4,6 +4,45 @@ use std::sync::OnceLock;
 
 static HOME_PATH: OnceLock<PathBuf> = OnceLock::new();
 
+macro_rules! home {
+    ($(,)?) => {};
+    ($(,)? $f:ident: $path:literal $($rest:tt)*) => {
+#[inline(always)]
+pub fn $f() -> PathBuf {
+    home().join($path)
+}
+        home!{$($rest)*}
+    };
+    ($(,)? $f:ident: ($path:expr) $($rest:tt)*) => {
+#[inline(always)]
+pub fn $f() -> PathBuf {
+    home().join($path)
+}
+        home!{$($rest)*}
+    };
+    ($(,)? $f:ident: $root:ident / $path:ident $($rest:tt)*) => {
+#[inline(always)]
+pub fn $f($path: impl AsRef<Path>) -> PathBuf {
+    let mut x = $root();x.push($path);x
+}
+        home!{$($rest)*}
+    };
+    ($(,)? $f:ident: $root:ident / $path:literal $($rest:tt)*) => {
+#[inline(always)]
+pub fn $f() -> PathBuf {
+    let mut x = $root();x.push($path);x
+}
+        home!{$($rest)*}
+    };
+    ($(,)? $f:ident: $root:ident / ($path:expr) $($rest:tt)*) => {
+#[inline(always)]
+pub fn $f() -> PathBuf {
+    let mut x = $root();x.push($path);x
+}
+        home!{$($rest)*}
+    };
+}
+
 /// Initialize the SHAFT_HOME directory path.
 ///
 /// Will fail silently and print a warning if it's already set
@@ -23,132 +62,32 @@ fn home() -> &'static Path {
         .expect("home not initialized; please debug with -vv")
 }
 
-/// HOME/install_cache.json
-#[inline(always)]
-pub fn install_cache_json() -> PathBuf {
-    home().join("install_cache.json")
-}
-
-/// HOME/shaft or HOME/shaft.exe
-#[inline(always)]
-pub fn shaft_binary() -> PathBuf {
-    home().join(crate::bin_name!("shaft"))
-}
-
-/// HOME/shaft.old or HOME/shaft.old.exe
-#[inline(always)]
-pub fn shaft_binary_old() -> PathBuf {
-    home().join(crate::bin_name!("shaft.old"))
-}
-
-/// HOME/environment.json
-#[inline(always)]
-pub fn environment_json() -> PathBuf {
-    home().join("environment.json")
-}
-
-/// HOME/previous_command.json
-#[inline(always)]
-pub fn previous_command_json() -> PathBuf {
-    home().join("previous_command.json")
-}
-
-/// HOME/version_cache.json
-#[inline(always)]
-pub fn version_cache_json() -> PathBuf {
-    home().join("version_cache.json")
-}
-
-/// HOME/config.toml
-#[inline(always)]
-pub fn config_toml() -> PathBuf {
-    home().join("config.toml")
-}
-
-/// HOME/.interruped
-#[inline(always)]
-pub fn dot_interrupted() -> PathBuf {
-    home().join(".interrupted")
-}
-
-/// HOME/.lock
-#[inline(always)]
-pub fn dot_lock() -> PathBuf {
-    home().join(".lock")
-}
-
-/// HOME/windows-shell
-#[inline(always)]
-pub fn windows_shell_root() -> PathBuf {
-    home().join("windows-shell")
-}
-
-/// HOME/init/
-#[inline(always)]
-pub fn init_root() -> PathBuf {
-    home().join("init")
-}
-
-/// HOME/bin/
-#[inline(always)]
-pub fn bin_root() -> PathBuf {
-    home().join("bin")
-}
-
-/// HOME/bin/<binary>
-#[inline(always)]
-pub fn binary(file: impl AsRef<Path>) -> PathBuf {
-    let mut bin = bin_root();
-    bin.push(file);
-    bin
-}
-
-/// HOME/temp/
-#[inline(always)]
-pub fn temp_root() -> PathBuf {
-    home().join("temp")
-}
-
-/// HOME/temp/<package>
-#[inline(always)]
-pub fn temp_dir(package: impl AsRef<Path>) -> PathBuf {
-    let mut x = temp_root();
-    x.push(package);
-    x
-}
-
-/// HOME/install/
-#[inline(always)]
-pub fn install_root() -> PathBuf {
-    home().join("install")
-}
-
-/// HOME/install/<package>
-#[inline(always)]
-pub fn install_dir(package: impl AsRef<Path>) -> PathBuf {
-    let mut x = install_root();
-    x.push(package);
-    x
-}
-
-/// HOME/install-old/
-#[inline(always)]
-pub fn install_old_root() -> PathBuf {
-    home().join("install-old")
-}
-
-/// HOME/install-old/<package>
-#[inline(always)]
-pub fn install_old_dir(package: impl AsRef<Path>) -> PathBuf {
-    let mut x = install_old_root();
-    x.push(package);
-    x
-}
-
-/// HOME/download/
-#[inline(always)]
-pub fn download_root() -> PathBuf {
-    home().join("download")
+#[rustfmt::skip]
+home! {
+    bin_root:              "bin",
+    binary:                  bin_root / file,
+    install_root:          "install",
+    install_dir:             install_root / package,
+    install_old_root:      "install-old",
+    install_old_dir:         install_old_root / package,
+    download_root:         "download",
+    temp_root:             "temp",
+    temp_dir:                temp_root / path,
+    tools_root:            "tools",
+    tools_version:           tools_root / "version",
+    windows_shell_root:    "windows-shell",
+    init_root:             "init",
+    shim_binary:             init_root / (crate::bin_name!("shaftim")),
+    dot_interrupted:       ".interrupted",
+    dot_lock:              ".lock",
+    config_toml:           "config.toml",
+    environment_json:      "environment.json",
+    install_cache_json:    "install_cache.json",
+    previous_command_json: "previous_command.json",
+    shaft_binary:          (crate::bin_name!("shaft")),
+    shaft_binary_old:      (crate::bin_name!("shaft.old")),
+    shim_config_json:      "shim_config.json",
+    version_cache_json:    "version_cache.json",
 }
 
 /// HOME/download/<identifier_stem>-<url_hash>.<ext>

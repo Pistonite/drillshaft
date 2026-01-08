@@ -1,6 +1,7 @@
-use std::{path::PathBuf, time::Duration};
+use std::path::PathBuf;
 
 use corelib::opfs;
+use cu::pre::*;
 use enumset::EnumSet;
 
 use crate::{_stub, BinId, Context, PkgId, Verified};
@@ -124,7 +125,6 @@ impl Package {
 
     /// Verify the package is installed and up-to-date
     #[inline(always)]
-    #[cu::error_ctx("failed to verify package status for '{}'", ctx.pkg)]
     pub fn verify(&self, ctx: &Context) -> cu::Result<Verified> {
         if !self.enabled() {
             cu::bail!(
@@ -132,20 +132,11 @@ impl Package {
                 ctx.pkg
             );
         }
-        (self.verify_fn)(ctx)
-        // retry needed?
-        //
-        // let mut error = None;
-        // for _ in 0..3 {
-        //     let e = match (self.verify_fn)(ctx) {
-        //         Ok(x) => return Ok(x),
-        //         Err(e) => e,
-        //     };
-        //     cu::debug!("failed to verify '{}': {:?}", ctx.pkg, e);
-        //     std::thread::sleep(Duration::from_secs(1));
-        //     error = Some(e);
-        // }
-        // Err(error.unwrap())
+        let pkg = ctx.pkg;
+        cu::check!(
+            (self.verify_fn)(ctx),
+            "failed to verify package status for '{pkg}'"
+        )
     }
 
     #[inline(always)]
@@ -157,7 +148,11 @@ impl Package {
                 ctx.pkg
             );
         }
-        (self.pre_uninstall_fn)(ctx)
+        let pkg = ctx.pkg;
+        cu::check!(
+            (self.pre_uninstall_fn)(ctx),
+            "failed to pre-uninstall package '{pkg}'"
+        )
     }
 
     /// Download the package, may use cache
@@ -184,10 +179,18 @@ impl Package {
     }
 
     /// Configure the package after installing
-    #[inline(always)]
-    #[cu::error_ctx("failed to configure '{}'", ctx.pkg)]
     pub fn configure(&self, ctx: &Context) -> cu::Result<()> {
-        (self.configure_fn)(ctx)
+        cu::check!(
+            (self.configure_fn)(ctx),
+            "failed to configure '{}'",
+            ctx.pkg
+        )?;
+        cu::check!(
+            ctx.shims_mut()?.build(),
+            "failed to build shims after configuring '{}'",
+            ctx.pkg
+        )?;
+        Ok(())
     }
 
     /// Clean up temporary files for the package. Does not uninstall it

@@ -11,14 +11,14 @@ pub enum Verified {
     NotInstalled,
 }
 impl Verified {
-    pub const fn installed(installed: bool) -> Self {
+    pub const fn is_installed(installed: bool) -> Self {
         if installed {
             Self::UpToDate
         } else {
             Self::NotInstalled
         }
     }
-    pub const fn uptodate(uptodate: bool) -> Self {
+    pub const fn is_uptodate(uptodate: bool) -> Self {
         if uptodate {
             Self::UpToDate
         } else {
@@ -41,8 +41,8 @@ pub(crate) mod pre {
         BinId, Context, Package, PkgId, Verified, check_bin_in_path, check_bin_in_path_and_shaft,
         register_binaries,
     };
-    pub(crate) use corelib::{Version, bin_name, command_output, epkg, hmgr, opfs};
+    pub(crate) use corelib::{Version, bin_name, command_output, epkg, hmgr, is_arm, opfs};
     pub(crate) use cu::pre::*;
-    pub(crate) use enumset::EnumSet;
+    pub(crate) use enumset::{EnumSet, enum_set};
     pub(crate) use std::path::{Path, PathBuf};
 }

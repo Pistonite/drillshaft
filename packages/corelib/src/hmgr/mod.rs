@@ -11,3 +11,7 @@ mod version;
 pub use version::*;
 mod download;
 pub use download::*;
+mod tools;
+pub use tools::*;
+mod shim;
+pub use shim::ShimConfig;

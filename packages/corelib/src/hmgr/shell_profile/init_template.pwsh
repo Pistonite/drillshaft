@@ -7,5 +7,7 @@ if ($PSVersionTable.PSVersion.Major -ne 5) {
   Set-PSReadLineOption -Color @{
     InlinePrediction = $PSStyle.Italic + $PSStyle.Foreground.Black
   }
+} else {
+  Remove-Item Alias:curl -Force
 }
 # ===

@@ -1,6 +1,7 @@
+use std::cell::{RefCell, RefMut};
 use std::path::PathBuf;
 
-use corelib::hmgr;
+use corelib::hmgr::{self, ShimConfig};
 use cu::pre::*;
 
 use crate::PkgId;
@@ -9,10 +10,24 @@ use crate::PkgId;
 pub struct Context {
     /// The id of the package being operated on
     pub pkg: PkgId,
+    /// Shim config
+    shims: RefCell<ShimConfig>,
 }
 impl Context {
+    pub fn new(shims: ShimConfig) -> Self {
+        Self {
+            pkg: PkgId::CorePseudo,
+            shims: RefCell::new(shims),
+        }
+    }
     pub fn pkg_name(&self) -> &'static str {
         self.pkg.to_str()
+    }
+    pub fn shims_mut(&self) -> cu::Result<RefMut<'_, ShimConfig>> {
+        cu::check!(
+            self.shims.try_borrow_mut(),
+            "unexpected: failed to borrow shims_mut"
+        )
     }
     pub fn temp_dir(&self) -> PathBuf {
         hmgr::paths::temp_dir(self.pkg_name())

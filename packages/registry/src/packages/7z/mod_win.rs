@@ -44,11 +44,11 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
 
     cu::fs::make_dir(hmgr::paths::bin_root())?;
     let exe_path = hmgr::paths::binary("7z.exe");
-    cu::fs::remove(&exe_path)?;
     let exefm_path = hmgr::paths::binary("7zfm.exe");
-    cu::fs::remove(&exefm_path)?;
-    opfs::symlink_file(exe_path, install_dir.join("7z.exe"))?;
-    opfs::symlink_file(exefm_path, install_dir.join("7zFM.exe"))?;
+    opfs::symlink_files(&[
+        (&exe_path, &install_dir.join("7z.exe")), 
+        (&exefm_path, &install_dir.join("7zFM.exe"))
+    ])?;
     Ok(())
 }
 pub fn uninstall(ctx: &Context) -> cu::Result<()> {
@@ -82,11 +82,7 @@ fn ensure_terminated() -> cu::Result<()> {
 }
 
 fn download_url() -> String {
-    let arch = if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else {
-        "x64"
-    };
+    let arch = is_arm!("arm64", else "x64");
     let version_no_dot = VERSION.replace(".", "");
     format!("https://github.com/ip7z/7zip/releases/download/{VERSION}/7z{version_no_dot}-{arch}.exe")
 }

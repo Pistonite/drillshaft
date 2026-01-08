@@ -2,7 +2,7 @@ use std::path::Path;
 
 use cu::pre::*;
 
-use crate::hmgr;
+use crate::{hmgr, opfs};
 
 #[derive(Default)]
 pub struct ShellProfile {}
@@ -38,6 +38,15 @@ impl ShellProfile {
         // TODO: shell configs from package
 
         cu::fs::write(init_pwsh, content)?;
+        if cfg!(windows) {
+            let windows_shell_dir = hmgr::paths::windows_shell_root();
+            let mut ps5 = windows_shell_dir.join("WindowsPowerShell");
+            ps5.push("profile.ps1");
+            cu::fs::write(ps5, content)?;
+            let mut ps7 = windows_shell_dir.join("PowerShell");
+            ps7.push("profile.ps1");
+            cu::fs::write(ps7, content)?;
+        }
         Ok(())
     }
 }

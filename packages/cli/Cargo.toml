@@ -23,6 +23,13 @@ enum-map.workspace = true
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55.0"
 
+[build-dependencies]
+cu = { workspace = true, features = [
+    "fs"
+] }
+flate2 = "1.1.5"
+tar = "0.4.4"
+
 [[bin]]
 name = "shaft"
 path = "src/main.rs"

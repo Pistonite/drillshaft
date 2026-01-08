@@ -8,27 +8,21 @@ use crate::opfs;
 
 /// Create a Windows symbolic link (requires sudo).
 /// `from` is where the link will be
-#[inline(always)]
-pub fn symlink_file(from: impl AsRef<Path>, to: impl AsRef<Path>) -> cu::Result<()> {
-    symlink_file_impl(from.as_ref(), to.as_ref())
-}
 #[cfg(windows)]
-#[cu::error_ctx("failed to create symbolic link from '{}' to '{}'", from.display(), to.display())]
-fn symlink_file_impl(from: &Path, to: &Path) -> cu::Result<()> {
-    if from.exists() {
-        cu::bail!("the symlink already exists");
+#[cu::error_ctx("failed to create symbolic links")]
+pub fn symlink_files(paths: &[(&Path, &Path)]) -> cu::Result<()> {
+    let mut script = String::new();
+    for (from, to) in paths {
+        cu::fs::remove(from)?;
+        let from_abs = from.normalize()?;
+        let to_abs = to.normalize()?;
+
+        let from_str = from_abs.as_utf8()?;
+        let to_str = to_abs.as_utf8()?;
+        build_symlink_script(&mut script, from_str, to_str);
     }
-    let from_abs = from.normalize()?;
-    let to_abs = to.normalize()?;
-    let from_str = from_abs.as_utf8()?;
-    let to_str = to_abs.as_utf8()?;
-
     // use powershell since sudo is required
-    cu::debug!("creating symlink from '{from_str}' to '{to_str}'");
-    let script =
-        format!("New-Item -ItemType SymbolicLink -Path \"{from_str}\" -Target \"{to_str}\"");
-
-    opfs::sudo("powershell", "create symlink")?
+    opfs::sudo("powershell", "create symlinks")?
         .args(["-NoLogo", "-NoProfile", "-c", &script])
         .stdout(cu::lv::D)
         .stderr(cu::lv::E)
@@ -36,6 +30,12 @@ fn symlink_file_impl(from: &Path, to: &Path) -> cu::Result<()> {
         .wait_nz()?;
 
     Ok(())
+}
+
+fn build_symlink_script(out: &mut String, from: &str, to: &str) {
+    out.push_str(&format!(
+        "New-Item -ItemType SymbolicLink -Path \"{from}\" -Target \"{to}\";"
+    ))
 }
 
 /// Get the SHA256 checksum of a file and return it as a string
@@ -71,11 +71,17 @@ pub fn un7z(archive_path: impl AsRef<Path>, out_dir: impl AsRef<Path>) -> cu::Re
 
 #[cu::error_ctx("failed to extract zip: '{}'", archive_path.display())]
 fn un7z_impl(archive_path: &Path, out_dir: &Path) -> cu::Result<()> {
-    let out_switch = format!("-o{}", quote_path(out_dir)?);
+    let script = format!(
+        "& {} x -y {} -o{}",
+        quote_path(cu::which("7z")?)?,
+        quote_path(archive_path)?,
+        quote_path(out_dir)?
+    );
     // 7z will create the out dir if not exist, so we don't need to check
-    cu::which("7z")?
+
+    cu::which("powershell")?
         .command()
-        .add(cu::args!["x", "-y", archive_path, out_switch])
+        .args(["-NoLogo", "-NoProfile", "-c", &script])
         .stdoe(cu::lv::D)
         .stdin_null()
         .wait_nz()?;

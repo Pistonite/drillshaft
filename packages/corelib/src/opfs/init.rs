@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 use cu::pre::*;
 use enumset::{EnumSet, EnumSetType};
 
@@ -48,53 +50,60 @@ impl From<LinuxFlavor> for u8 {
     }
 }
 
+static VERSION: OnceLock<String> = OnceLock::new();
+
 /// Initialize the platform variable. Called once at beginning when launching
 /// the package manager
 #[cfg(target_os = "windows")]
 #[inline(always)]
-pub fn init() -> cu::Result<()> {
+pub fn init(version: &str) -> cu::Result<()> {
     crate::internal::ensure_main_thread()?; // record main thread ID
-    Ok(())
+    let _ = VERSION.set(version.to_string());
+    imp::init()
 }
 
-/// Initialize the platform variable. Called once at beginning when launching
-/// the package manager
 #[cfg(target_os = "linux")]
-#[inline(always)]
-pub fn init() -> cu::Result<()> {
+mod imp {
     use std::path::Path;
-    crate::internal::ensure_main_thread()?; // record main thread ID
 
-    if Path::new("/etc/arch-release").exists() {
-        if cu::which("pacman").is_err() {
-            cu::bail!("unsupported platform: pacman not available; please fix your system");
+    pub fn init() -> cu::Result<()> {
+        if Path::new("/etc/arch-release").exists() {
+            if cu::which("pacman").is_err() {
+                cu::bail!("unsupported platform: pacman not available; please fix your system");
+            }
+            CURRENT_FLAVOR.set(LinuxFlavor::Pacman);
+            cu::debug!("found pacman - arch linux");
+            return Ok(());
         }
-        CURRENT_FLAVOR.set(LinuxFlavor::Pacman);
-        cu::debug!("found pacman - arch linux");
-        return Ok(());
-    }
 
-    if cu::which("pacman").is_ok() {
-        cu::debug!("found pacman - assuming using pacman as package manager");
-        CURRENT_FLAVOR.set(LinuxFlavor::Pacman);
-        return Ok(());
-    }
+        if cu::which("pacman").is_ok() {
+            cu::debug!("found pacman - assuming using pacman as package manager");
+            CURRENT_FLAVOR.set(LinuxFlavor::Pacman);
+            return Ok(());
+        }
 
-    if cu::which("apt").is_ok() {
-        cu::debug!("found apt - assuming using apt as package manager");
-        CURRENT_FLAVOR.set(LinuxFlavor::Apt);
-        return Ok(());
-    }
+        if cu::which("apt").is_ok() {
+            cu::debug!("found apt - assuming using apt as package manager");
+            CURRENT_FLAVOR.set(LinuxFlavor::Apt);
+            return Ok(());
+        }
 
-    cu::bail!("cannot determine the platform of the system");
+        cu::bail!("cannot determine the platform of the system");
+    }
 }
 
-/// Initialize the platform variable. Called once at beginning when launching
-/// the package manager
+#[cfg(windows)]
+mod imp {
+    pub fn init() -> cu::Result<()> {
+        Ok(())
+    }
+}
+
 #[cfg(target_os = "macos")]
-#[inline(always)]
-pub fn init() -> cu::Result<()> {
-    Ok(())
+mod imp {
+    pub fn init() -> cu::Result<()> {
+        Ok(())
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -102,9 +111,20 @@ pub fn linux_flavor() -> LinuxFlavor {
     CURRENT_FLAVOR.get()
 }
 
+pub fn cli_version() -> &'static str {
+    VERSION.get().expect("version not initialized")
+}
+
 #[macro_export]
 macro_rules! is_arm {
     () => {
         cfg!(target_arch = "aarch64")
+    };
+    ($a:expr, else $b:expr) => {
+        if cfg!(target_arch = "aarch64") {
+            $a
+        } else {
+            $b
+        }
     };
 }

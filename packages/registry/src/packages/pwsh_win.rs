@@ -7,36 +7,49 @@ static VERSION: &str = "7.6.0-preview.6";
 
 register_binaries!("pwsh");
 
+pub fn binary_dependencies() -> EnumSet<BinId> {
+    enum_set! { BinId::_7z }
+}
+
 pub fn verify(_: &Context) -> cu::Result<Verified> {
     check_bin_in_path_and_shaft!("pwsh");
     let version = command_output!("pwsh", ["-NoLogo", "-NoProfile", "-c", "$PSVersionTable.PSVersion.ToString()"]);
     let is_preview = version.contains("preview");
     let is_uptodate = Version(version.trim()) >= VERSION;
-    Ok(Verified::uptodate(is_preview && is_uptodate))
+    Ok(Verified::is_uptodate(is_preview && is_uptodate))
 }
-pub fn download(ctx: &Context) -> cu::Result<()> {
+pub fn download(_: &Context) -> cu::Result<()> {
     let sha256_checksum = if cfg!(target_arch = "aarch64") {
         "36dc90e7f0e7870b0970c9a58790de4de4217e65acafaf790e87b7c97d93649f"
     } else {
         "481ce45bd9ebfab9a5b254a35f145fb6259bd452ae67d92ab1d231b6367987d9"
     };
-    let arch = if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else {
-        "x64"
-    };
-    let url = format!("https://github.com/PowerShell/PowerShell/releases/download/v{VERSION}/PowerShell-{VERSION}-win-{arch}.zip");
-    todo!()
+    hmgr::download_file("pwsh.zip", download_url(), sha256_checksum)?;
+    Ok(())
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {
     opfs::ensure_terminated("pwsh.exe")?;
-    cu::warn!("please also install/update HackNerdFont:\n  https://github.com/ryanoasis/nerd-fonts/releases");
-    let _ = cu::prompt!("press ENTER when confirmed HackNerdFont is installed")?;
-    cu::check!(verify(ctx), "system-git requires 'git' to be installed on the system")?;
+    cu::fs::make_dir(hmgr::paths::install_root())?;
+    ctx.move_install_to_old_if_exists()?;
+
+    let pwsh_zip = hmgr::paths::download("pwsh.zip", download_url());
+    let pwsh_dir = ctx.install_dir();
+    opfs::un7z(pwsh_zip, &pwsh_dir)?;
+
+    let pwsh_exe = pwsh_dir.join("pwsh.exe");
+    ctx.shims_mut()?.add("pwsh", &[pwsh_exe.as_utf8()?]);
     Ok(())
 }
 
-pub fn uninstall(_: &Context) -> cu::Result<()> {
+pub fn uninstall(ctx: &Context) -> cu::Result<()> {
+    opfs::ensure_terminated("pwsh.exe")?;
+    ctx.move_install_to_old_if_exists()?;
+    ctx.shims_mut()?.remove("pwsh")?;
     Ok(())
+}
+
+fn download_url() -> String {
+    let arch = is_arm!("arm64", else "x64");
+    format!("https://github.com/PowerShell/PowerShell/releases/download/v{VERSION}/PowerShell-{VERSION}-win-{arch}.zip")
 }

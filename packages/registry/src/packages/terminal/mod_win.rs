@@ -15,7 +15,7 @@ pub fn verify(ctx: &Context) -> cu::Result<Verified> {
     }
     let id = ctx.pkg.to_str();
     let version = hmgr::get_cached_version(id)?;
-    Ok(Verified::uptodate(version.as_deref() == Some(INTERNAL_VERSION)))
+    Ok(Verified::is_uptodate(version.as_deref() == Some(INTERNAL_VERSION)))
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {

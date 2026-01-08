@@ -52,7 +52,10 @@ impl CliApi {
             }
         }
         cu::trace!("args: {self:#?}");
-        cu::check!(opfs::init(), "failed to init platform")?;
+        cu::check!(
+            opfs::init(clap::crate_version!()),
+            "failed to init platform"
+        )?;
         cu::check!(crate::init::check_init_home(), "failed to init home")?;
         let config = crate::config::load_config()?;
         cu::check!(

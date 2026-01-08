@@ -1,3 +1,4 @@
+use corelib::hmgr::ShimConfig;
 use cu::pre::*;
 use enumset::EnumSet;
 use registry::{Context, PkgId, Verified};
@@ -20,11 +21,14 @@ pub fn remove(packages: &[String]) -> cu::Result<()> {
         x => cu::info!("removing {x} packages..."),
     }
 
+    let shims = cu::check!(ShimConfig::load(), "failed to load shim config")?;
+
     // check precondition for each package
     let mut to_uninstall = Vec::with_capacity(graph.len());
+    let mut ctx = Context::new(shims);
     for pkg in &graph {
         let pkg = *pkg;
-        let ctx = Context { pkg };
+        ctx.pkg = pkg;
         let package = pkg.package();
         match package.verify(&ctx)? {
             Verified::NotInstalled => {
@@ -40,10 +44,14 @@ pub fn remove(packages: &[String]) -> cu::Result<()> {
     let len = to_uninstall.len();
     let uninstalled: EnumSet<_> = to_uninstall.iter().copied().collect();
     for pkg in to_uninstall {
-        cu::check!(do_remove_package(pkg), "failed to remove '{pkg}'")?;
+        ctx.pkg = pkg;
+        ctx = cu::check!(do_remove_package(ctx), "failed to remove '{pkg}'")?;
         installed.remove(pkg);
         installed.save()?;
     }
+
+    // rebuild shim executable if needed (if any package removed their shims)
+    ctx.shims_mut()?.build()?;
 
     cu::info!("removed {len} packages, configuring...");
     let sync_pkgs = graph::resolve_config_pkgs(EnumSet::new(), uninstalled, &installed);
@@ -68,9 +76,9 @@ fn rectify_pkgs_to_remove(pkgs: EnumSet<PkgId>, installed: &InstallCache) -> Enu
     out
 }
 
-fn do_remove_package(pkg: PkgId) -> cu::Result<()> {
+fn do_remove_package(ctx: Context) -> cu::Result<Context> {
+    let pkg = ctx.pkg;
     let package = pkg.package();
-    let ctx = Context { pkg };
     let bar = cu::progress_bar(4, format!("remove '{pkg}'"));
 
     cu::progress!(&bar, 0, "backup");
@@ -85,7 +93,8 @@ fn do_remove_package(pkg: PkgId) -> cu::Result<()> {
         Verified::NotInstalled => {
             cu::progress_done!(&bar, "removed '{pkg}'");
             backup_guard.clear();
-            return Ok(());
+            drop(backup_guard);
+            return Ok(ctx);
         }
         _ => {
             cu::error!("uninstalling not successful for '{pkg}', restoring...");
