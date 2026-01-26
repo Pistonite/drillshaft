@@ -7,7 +7,7 @@ register_binaries!(
     "perl", "gpg", "curl", "wget",
     "fzf", "jq",
     "bat", "dust", "fd", "websocat", "zoxide", "c", "ci",
-    "viopen", "vibash", "n", "wsclip"
+    "viopen", "vibash", "n"
 );
 
 mod perl;
@@ -39,11 +39,11 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     if Version(&v.version) < metadata::bat::VERSION {
         return Ok(Verified::NotUpToDate);
     }
-    let v = check_installed_with_cargo!("du-dust");
+    let v = check_installed_with_cargo!("dust", "du-dust");
     if Version(&v.version) < metadata::dust::VERSION {
         return Ok(Verified::NotUpToDate);
     }
-    let v = check_installed_with_cargo!("fd-find");
+    let v = check_installed_with_cargo!("find", "fd-find");
     if Version(&v.version) < metadata::fd::VERSION {
         return Ok(Verified::NotUpToDate);
     }
@@ -59,9 +59,12 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     if Version(&v.version) < metadata::shellutils::viopen::VERSION {
         return Ok(Verified::NotUpToDate);
     }
-    // let alias_version = hmgr::get_cached_version("coreutils-alias")?;
-    // Ok(Verified::is_uptodate(alias_version.as_deref() == Some(metadata::coreutils::ALIAS_VERSION)))
-    todo!()
+    let v = check_installed_with_cargo!("n");
+    if Version(&v.version) < metadata::shellutils::n::VERSION {
+        return Ok(Verified::NotUpToDate);
+    }
+    let alias_version = hmgr::get_cached_version("shellutils-alias")?;
+    Ok(Verified::is_uptodate(alias_version.as_deref() == Some(metadata::shellutils::ALIAS_VERSION)))
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {
@@ -76,6 +79,7 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
     epkg::cargo::install("websocat", ctx.bar_ref())?;
     epkg::cargo::install("zoxide", ctx.bar_ref())?;
     epkg::cargo::install_git_commit("viopen", metadata::shellutils::REPO, metadata::shellutils::COMMIT, ctx.bar_ref())?;
+    epkg::cargo::install_git_commit("n", metadata::shellutils::REPO, metadata::shellutils::COMMIT, ctx.bar_ref())?;
     Ok(())
 }
 
@@ -91,5 +95,29 @@ pub fn uninstall(ctx: &Context) -> cu::Result<()> {
     epkg::cargo::uninstall("websocat")?;
     epkg::cargo::uninstall("zoxide")?;
     epkg::cargo::uninstall("viopen")?;
+    Ok(())
+}
+
+pub fn configure(ctx: &Context) -> cu::Result<()> {
+    let alias_version = hmgr::get_cached_version("shellutils-alias")?;
+    if alias_version.as_deref() != Some(metadata::shellutils::ALIAS_VERSION) {
+        ctx.add_item(hmgr::Item::UserEnvVar("EDITOR".to_string(), "viopen".to_string()))?;
+
+        // zoxide needs to be after starship, recommended to be at the end
+        let script = command_output!("zoxide", ["init", "bash", "--cmd", "c"]);
+        ctx.add_priority_item(-1, hmgr::Item::Bash(script))?;
+        let script = command_output!("zoxide", ["init", "zsh", "--cmd", "c"]);
+        ctx.add_priority_item(-1, hmgr::Item::Zsh(script))?;
+
+        if let Some(mut home) = std::env::home_dir() {
+            home.push(".bashrc");
+            ctx.add_item(hmgr::Item::ShimBin("vibash".to_string(), vec![
+                cu::which("viopen")?.into_utf8()?,
+                home.into_utf8()?
+            ]))?;
+        }
+
+        hmgr::set_cached_version("shellutils-alias", metadata::shellutils::ALIAS_VERSION)?;
+    }
     Ok(())
 }

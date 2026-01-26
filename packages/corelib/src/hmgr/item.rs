@@ -10,6 +10,7 @@ use crate::{bin_name, hmgr, opfs};
 pub struct ItemMgr {
     items: Vec<ItemEntry>,
     skip_reinvocation: bool,
+    reinvocation_needed: bool,
     dirty: bool,
     shim_dirty: bool,
     bash_dirty: bool,
@@ -25,6 +26,7 @@ impl ItemMgr {
             return Ok(Self {
                 items: vec![],
                 skip_reinvocation: false,
+                reinvocation_needed: false,
                 dirty: true,
                 shim_dirty: true,
                 bash_dirty: true,
@@ -36,6 +38,7 @@ impl ItemMgr {
         Ok(Self {
             items,
             skip_reinvocation: false,
+            reinvocation_needed: false,
             dirty: false,
             shim_dirty: false,
             bash_dirty: false,
@@ -46,10 +49,11 @@ impl ItemMgr {
     pub fn skip_reinvocation(&mut self, skip: bool) {
         self.skip_reinvocation = skip;
     }
-    pub fn add_item(&mut self, package: &str, item: Item) {
+    pub fn add_item(&mut self, package: &str, item: Item, priority: i32) {
         let entry = ItemEntry {
             package: package.to_string(),
             item,
+            priority,
         };
         if self.items.contains(&entry) {
             return;
@@ -111,6 +115,8 @@ impl ItemMgr {
 
         #[cfg(windows)]
         {
+            todo!(); // env to remove need to check if the existing value
+            // is the expected  value
             for key in _env_to_remove {
                 hmgr::windows::set_user(&key, "")?;
             }
@@ -139,6 +145,8 @@ impl ItemMgr {
             return Ok(());
         }
 
+        self.items.sort_by_key(|x| std::cmp::Reverse(x.priority));
+
         #[cfg(windows)]
         {
             self.rebuild_user_env_vars()?;
@@ -160,6 +168,10 @@ impl ItemMgr {
 
         let config_path = hmgr::paths::items_config_json();
         cu::fs::write_json_pretty(config_path, &self.items)?;
+
+        if !self.skip_reinvocation && self.reinvocation_needed {
+            hmgr::require_envchange_reinvocation(true)?;
+        }
 
         self.dirty = false;
         Ok(())
@@ -189,9 +201,7 @@ impl ItemMgr {
             // it could change (user can add extra paths)
             // it's probably ok to just not assert
             hmgr::add_env_assert(envs)?;
-            if !self.skip_reinvocation {
-                hmgr::require_envchange_reinvocation(true)?;
-            }
+            self.reinvocation_needed = true;
         }
         Ok(())
     }
@@ -252,13 +262,11 @@ impl ItemMgr {
             let _ = writeln!(out, "{script}");
         }
 
+        cu::fs::write(hmgr::paths::init_bash(), out)?;
         if path_changed || reinvocation_needed {
             hmgr::add_env_assert(envs)?;
-            if !self.skip_reinvocation {
-                hmgr::require_envchange_reinvocation(true)?;
-            }
+            self.reinvocation_needed = true;
         }
-        cu::fs::write(hmgr::paths::init_bash(), out)?;
         self.bash_dirty = false;
         Ok(())
     }
@@ -294,13 +302,11 @@ impl ItemMgr {
             let _ = writeln!(out, "{script}");
         }
 
+        cu::fs::write(hmgr::paths::init_zsh(), out)?;
         if path_changed || reinvocation_needed {
             hmgr::add_env_assert(envs)?;
-            if !self.skip_reinvocation {
-                hmgr::require_envchange_reinvocation(true)?;
-            }
+            self.reinvocation_needed = true;
         }
-        cu::fs::write(hmgr::paths::init_zsh(), out)?;
         self.zsh_dirty = false;
         Ok(())
     }
@@ -515,6 +521,9 @@ impl ItemMgr {
 pub struct ItemEntry {
     package: String,
     item: Item,
+    /// Higher is applied first
+    #[serde(default)]
+    priority: i32,
 }
 
 /// An item is an injection to the installation. Packages

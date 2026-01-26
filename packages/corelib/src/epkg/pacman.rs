@@ -33,14 +33,23 @@ pub fn installed_version(package_name: &str) -> cu::Result<Option<String>> {
         for line in stdout.lines() {
             let line = line.trim();
             if let Some((name, version)) = line.split_once(' ') {
-                cu::debug!("pacman: queried installed package '{name}', version='{version}'");
+                cu::trace!("pacman: queried installed package '{name}', version='{version}'");
                 state
                     .installed_packages
                     .insert(name.to_string(), version.to_string());
             }
         }
     }
-    Ok(state.installed_packages.get(package_name).cloned())
+    let version = state.installed_packages.get(package_name);
+    match version {
+        Some(x) => {
+            cu::debug!("pacman: package '{package_name}' installed, version='{x}'");
+        }
+        None => {
+            cu::debug!("pacman: package '{package_name}' not installed");
+        }
+    }
+    Ok(version.cloned())
 }
 
 #[cu::context("failed to install '{package_name}' with pacman")]
@@ -49,12 +58,16 @@ pub fn install(package_name: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Re
     let mut state = pacman::instance()?;
     let (child, bar) = opfs::sudo("pacman", &format!("install {package_name}"))?
         .add(cu::args!["-S", package_name, "--noconfirm", "--needed"])
-        .stdout(cu::pio::spinner(format!("pacman install '{package_name}'")).configure_spinner(|builder| builder.parent(bar.cloned())))
+        .stdout(
+            cu::pio::spinner(format!("pacman install '{package_name}'"))
+                .configure_spinner(|builder| builder.parent(bar.cloned())),
+        )
         .stderr(cu::lv::E)
         .stdin_null()
         .spawn()?;
     child.wait_nz()?;
     bar.done();
+    cu::info!("installed '{package_name}' with pacman");
     state.installed_packages.clear();
     Ok(())
 }
@@ -68,7 +81,10 @@ fn sync_database(bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
     {
         let (child, bar, _) = opfs::sudo("pacman", "sync pacman database")?
             .args(["-Syy", "--noconfirm"])
-            .stdoe(cu::pio::spinner("sync pacman database").configure_spinner(|builder|builder.parent(bar.cloned())))
+            .stdoe(
+                cu::pio::spinner("sync pacman database")
+                    .configure_spinner(|builder| builder.parent(bar.cloned())),
+            )
             .stdin_null()
             .spawn()?;
         child.wait_nz()?;
@@ -83,9 +99,10 @@ pub fn uninstall(package_name: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::
     let mut state = pacman::instance()?;
     let (child, bar) = opfs::sudo("pacman", &format!("uninstall {package_name}"))?
         .add(cu::args!["-R", package_name, "--noconfirm"])
-        .stdout(cu::pio::spinner(format!(
-            "pacman uninstall '{package_name}'"
-        )).configure_spinner(|builder|builder.parent(bar.cloned())))
+        .stdout(
+            cu::pio::spinner(format!("pacman uninstall '{package_name}'"))
+                .configure_spinner(|builder| builder.parent(bar.cloned())),
+        )
         .stderr(cu::lv::E)
         .stdin_null()
         .spawn()?;

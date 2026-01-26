@@ -36,7 +36,9 @@ pub(crate) use check_bin_in_path_and_shaft;
 macro_rules! check_installed_pacman_package {
     ($l:literal) => {
         match corelib::epkg::pacman::installed_version($l)? {
-            None => return Ok(Verified::NotInstalled),
+            None => {
+                return Ok(Verified::NotInstalled);
+            }
             Some(x) => x,
         }
     };
@@ -50,11 +52,7 @@ macro_rules! check_installed_with_pacman {
         check_bin_in_path!($bin);
         match corelib::epkg::pacman::installed_version($l)? {
             None => {
-                cu::bail!(concat!(
-                    "current '",
-                    $bin,
-                    "' is not installed with pacman; please uninstall it"
-                ))
+                cu::bail!("current '{}' is not installed with pacman; please uninstall it", $bin)
             }
             Some(x) => x,
         }
@@ -63,13 +61,7 @@ macro_rules! check_installed_with_pacman {
         check_bin_in_path!($bin);
         match corelib::epkg::pacman::installed_version($l)? {
             None => {
-                cu::bail!(concat!(
-                    "current '",
-                    $bin,
-                    "' is not installed with pacman; please uninstall it or use the '",
-                    $system,
-                    "' package"
-                ))
+                cu::bail!("current '{}' is not installed with pacman; please uninstall it or use the '{}' package", $bin, $system)
             }
             Some(x) => x,
         }
@@ -79,15 +71,15 @@ macro_rules! check_installed_with_pacman {
 pub(crate) use check_installed_with_pacman;
 
 macro_rules! check_installed_with_cargo {
-    ($l:literal) => {{
-        check_bin_in_path!($l);
+    ($bin:literal) => {{ check_installed_with_cargo!($bin, $bin) }};
+    ($bin:literal, $l:literal) => {{
+        check_bin_in_path!($bin);
         match corelib::epkg::cargo::installed_info($l)? {
             None => {
-                cu::bail!(concat!(
-                    "current '",
-                    $l,
-                    "' is not installed with cargo; please uninstall it"
-                ))
+                cu::bail!(
+                    "current '{}' is not installed with cargo; please uninstall it",
+                    $bin
+                )
             }
             Some(info) => info,
         }

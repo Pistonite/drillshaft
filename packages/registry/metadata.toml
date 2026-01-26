@@ -18,10 +18,13 @@ eza.VERSION = "0.23.4"
 uutils.VERSION = "0.5.0"
 
 [shellutils]
+ALIAS_VERSION = "1"
 REPO = "https://github.com/Pistonite/shellutils"
-COMMIT = "e3702e3c473f8dace61734913be4e2189b30bf2f"
+COMMIT = "adcda5952d62c758573a9cf9fdf3671b0260ecb4"
 which.VERSION = "0.1.2"
-viopen.VERSION = "0.1.0"
+viopen.VERSION = "0.1.2"
+n.VERSION = "0.1.1"
+wsclip.VERSION = "0.1.4"
 
 [git]
 'cfg(windows)'.VERSION = "2.52.0.vfs"

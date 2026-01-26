@@ -66,7 +66,11 @@ fn do_sync_package(
         Verified::NotInstalled => SyncType::Full,
         Verified::NotUpToDate => SyncType::FullWithBackup,
         Verified::UpToDate => {
-            if installed.is_dirty(pkg) {
+            // if the pkg is not installed yet (meaning never configured),
+            // configure it even if the binaries are installed already
+            //
+            // and reconfigure if the config is dirtied
+            if !installed.pkgs.contains(pkg) || installed.is_dirty(pkg) {
                 SyncType::Config
             } else {
                 SyncType::UpToDate

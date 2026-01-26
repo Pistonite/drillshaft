@@ -3,6 +3,7 @@ use cu::pre::*;
 /// Install a winget package
 #[cu::context("failed to install {id} with winget")]
 pub fn install(id: &str) -> cu::Result<()> {
+    todo!(); // progress bars
     cu::info!("installing {id} with winget");
     cu::which("winget")?
         .command()

@@ -65,22 +65,40 @@ pub fn installed_info(package_name: &str) -> cu::Result<Option<CargoInstalledInf
                 .insert(name.to_string(), CargoInstalledInfo { version, source });
         }
     }
-    Ok(state.installed_packages.get(package_name).cloned())
+    let info = state.installed_packages.get(package_name);
+    match info {
+        Some(x) => {
+            cu::debug!("cargo: package '{package_name}': {x:?}");
+        }
+        None => {
+            cu::debug!("cargo: package '{package_name}' not installed");
+        }
+    }
+    Ok(info.cloned())
 }
 
 /// Install a package using `cargo install --git --rev`
 #[cu::context("failed to install '{package}' with cargo")]
-pub fn install_git_commit(package: &str, git: &str, rev: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
+pub fn install_git_commit(
+    package: &str,
+    git: &str,
+    rev: &str,
+    bar: Option<&Arc<cu::ProgressBar>>,
+) -> cu::Result<()> {
     let mut state = cargo::instance()?;
     let (child, bar) = cu::which("cargo")?
         .command()
         .add(cu::args![
             "install", package, "--git", git, "--rev", rev, "--locked"
         ])
-        .preset(cu::pio::cargo(format!("cargo install '{package}'")).configure_spinner(|builder| builder.parent(bar.cloned())))
+        .preset(
+            cu::pio::cargo(format!("cargo install '{package}'"))
+                .configure_spinner(|builder| builder.parent(bar.cloned())),
+        )
         .spawn()?;
     child.wait_nz()?;
     bar.done();
+    cu::info!("installed '{package}' with cargo");
     state.installed_packages.clear();
     Ok(())
 }
@@ -92,10 +110,14 @@ pub fn install(package: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<
     let (child, bar) = cu::which("cargo")?
         .command()
         .add(cu::args!["install", package, "--locked"])
-        .preset(cu::pio::cargo(format!("cargo install '{package}'")).configure_spinner(|builder| builder.parent(bar.cloned())))
+        .preset(
+            cu::pio::cargo(format!("cargo install '{package}'"))
+                .configure_spinner(|builder| builder.parent(bar.cloned())),
+        )
         .spawn()?;
     child.wait_nz()?;
     bar.done();
+    cu::info!("installed '{package}' with cargo");
     state.installed_packages.clear();
     Ok(())
 }
@@ -113,19 +135,27 @@ pub fn binstall(package: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result
             "--no-confirm",
             "--locked",
         ])
-        .stdout(cu::pio::spinner(format!("cargo binstall '{package}'")).configure_spinner(|builder| builder.parent(bar.cloned())))
+        .stdout(
+            cu::pio::spinner(format!("cargo binstall '{package}'"))
+                .configure_spinner(|builder| builder.parent(bar.cloned())),
+        )
         .stderr(cu::lv::E)
         .stdin_null()
         .spawn()?;
     child.wait_nz()?;
     bar.done();
+    cu::info!("installed '{package}' with cargo-binstall");
     state.installed_packages.clear();
     Ok(())
 }
 
 /// Install a package using `cargo binstall --git` (with fallback)
 #[cu::context("failed to install '{package}' with cargo-binstall")]
-pub fn binstall_git(package: &str, git: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
+pub fn binstall_git(
+    package: &str,
+    git: &str,
+    bar: Option<&Arc<cu::ProgressBar>>,
+) -> cu::Result<()> {
     let mut state = cargo::instance()?;
     let (child, bar) = cu::which("cargo-binstall")?
         .command()
@@ -138,12 +168,16 @@ pub fn binstall_git(package: &str, git: &str, bar: Option<&Arc<cu::ProgressBar>>
             "--git",
             git
         ])
-        .stdout(cu::pio::spinner(format!("cargo binstall '{package}'")).configure_spinner(|builder| builder.parent(bar.cloned())))
+        .stdout(
+            cu::pio::spinner(format!("cargo binstall '{package}'"))
+                .configure_spinner(|builder| builder.parent(bar.cloned())),
+        )
         .stderr(cu::lv::E)
         .stdin_null()
         .spawn()?;
     child.wait_nz()?;
     bar.done();
+    cu::info!("installed '{package}' with cargo-binstall");
     state.installed_packages.clear();
     Ok(())
 }

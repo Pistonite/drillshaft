@@ -41,7 +41,11 @@ impl Context {
         )
     }
     pub fn add_item(&self, item: Item) -> cu::Result<()> {
-        self.items_mut()?.add_item(self.pkg.to_str(), item);
+        self.add_priority_item(0, item)
+    }
+    pub fn add_priority_item(&self, priority: i32, item: Item) -> cu::Result<()> {
+        self.items_mut()?
+            .add_item(self.pkg.to_str(), item, priority);
         Ok(())
     }
 

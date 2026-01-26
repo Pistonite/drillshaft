@@ -118,15 +118,20 @@ fn validate_credential(path: &Path, reason: &str) -> cu::Result<()> {
     }
     let prompt = match get_user_name().ok() {
         Some(x) => {
-            format!("[sudo] will spawn this executable: {}\n- reason: {}\n
+            format!(
+                "[sudo] will spawn this executable: {}\n- reason: {}\n
 password for {}",
-                path.display(), reason, x
+                path.display(),
+                reason,
+                x
             )
         }
         None => {
-            format!("[sudo] will spawn this executable: {}\n- reason: {}\n
+            format!(
+                "[sudo] will spawn this executable: {}\n- reason: {}\n
 password",
-                path.display(), reason
+                path.display(),
+                reason
             )
         }
     };
