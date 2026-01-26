@@ -5,6 +5,7 @@ pub use context::*;
 mod macros;
 pub(crate) use macros::*;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Verified {
     UpToDate,
     NotUpToDate,
@@ -39,12 +40,12 @@ pub use _gen::{BinId, PkgId};
 pub(crate) mod _stub;
 
 pub(crate) mod pre {
-    #[cfg(target_os = "linux")]
-    pub(crate) use crate::check_installed_with_pacman;
     pub(crate) use crate::{
         BinId, Context, Package, PkgId, Verified, check_bin_in_path, check_bin_in_path_and_shaft,
         check_installed_with_cargo, metadata, register_binaries,
     };
+    #[cfg(target_os = "linux")]
+    pub(crate) use crate::{check_installed_pacman_package, check_installed_with_pacman};
     pub(crate) use corelib::{Version, bin_name, command_output, epkg, hmgr, if_arm, jsexe, opfs};
     pub(crate) use cu::pre::*;
     pub(crate) use enumset::{EnumSet, enum_set};

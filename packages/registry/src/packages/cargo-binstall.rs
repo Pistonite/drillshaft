@@ -9,11 +9,11 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     Ok(Verified::is_uptodate(!(Version(&info.version) < metadata::cargo_binstall::VERSION)))
 }
 
-pub fn install(_: &Context) -> cu::Result<()> {
+pub fn install(ctx: &Context) -> cu::Result<()> {
     if cu::which("cargo-binstall").is_ok() {
-        epkg::cargo::binstall("cargo-binstall")
+        epkg::cargo::binstall("cargo-binstall", ctx.bar_ref())
     } else {
-        epkg::cargo::install("cargo-binstall")
+        epkg::cargo::install("cargo-binstall", ctx.bar_ref())
     }
 }
 

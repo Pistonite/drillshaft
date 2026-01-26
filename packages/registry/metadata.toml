@@ -3,27 +3,68 @@ VERSION = "25.01"
 'cfg(target_arch="aarch64")'.SHA = "6365c7c44e217b9c1009e065daf9f9aa37454e64315b4aaa263f7f8f060755dc"
 'cfg(target_arch="x86_64")'.SHA = "78afa2a1c773caf3cf7edf62f857d2a8a5da55fb0fff5da416074c0d28b2b55f"
 
-[coreutils]
-eza.VERSION = "0.23.4"
-which.VERSION = "0.1.2"
-uutils.VERSION = "0.5.0"
-
-[shellutils]
-REPO = "https://github.com/Pistonite/shellutils"
-COMMIT = "e3702e3c473f8dace61734913be4e2189b30bf2f"
-
-[git]
-'cfg(windows)'.VERSION = "2.52.0.vfs"
-
 [pwsh]
 # using preview version to enable tilde (~) expansion
 VERSION = "7.6.0-preview.6"
 'cfg(target_arch="aarch64")'.SHA = "36dc90e7f0e7870b0970c9a58790de4de4217e65acafaf790e87b7c97d93649f"
 'cfg(target_arch="x86_64")'.SHA = "481ce45bd9ebfab9a5b254a35f145fb6259bd452ae67d92ab1d231b6367987d9"
 
-[hack_font]
-VERSION = "v3.4.0"
-SHA = "8ca33a60c791392d872b80d26c42f2bfa914a480f9eb2d7516d9f84373c36897"
-
 [cargo_binstall]
 VERSION = "1.17.3"
+
+[coreutils]
+ALIAS_VERSION = "1"
+eza.VERSION = "0.23.4"
+uutils.VERSION = "0.5.0"
+
+[shellutils]
+REPO = "https://github.com/Pistonite/shellutils"
+COMMIT = "e3702e3c473f8dace61734913be4e2189b30bf2f"
+which.VERSION = "0.1.2"
+viopen.VERSION = "0.1.0"
+
+[git]
+'cfg(windows)'.VERSION = "2.52.0.vfs"
+'cfg(target_os="linux")'.VERSION = "2.52.0"
+
+[perl]
+'cfg(windows)'.VERSION = "5.38.2"
+'cfg(target_os="linux")'.VERSION = "5.42.0"
+
+[curl]
+'cfg(target_os="linux")'.VERSION = "8.18.0"
+# Windows ships with curl.exe
+
+[wget]
+'cfg(target_os="linux")'.VERSION = "1.25.0"
+'cfg(windows)'.VERSION = "1.25.0"
+'cfg(windows)'.URL = "https://github.com/lifenjoiner/wget-for-windows/releases/download/v1.25.0.230-a13d0/wget-ucrt64-xp-openssl-lite_v1.25.0.230-a13d0_e2f4498e19fa63184014e3b9d2f071bbc1c6217b.7z"
+'cfg(windows)'.SHA = "fd60911ec2d94857e55e574521e8cb247ff852b58a34348a829f7cd98a2530e7"
+
+[fzf]
+'cfg(target_os="linux")'.VERSION = "0.67.0"
+'cfg(windows)'.VERSION = "0.67.0"
+
+[jq]
+'cfg(target_os="linux")'.VERSION = "1.8.1"
+
+[bat]
+VERSION = "0.26.1"
+
+[dust]
+VERSION = "1.2.4"
+
+[fd]
+VERSION = "10.3.0"
+
+[websocat]
+VERSION = "1.14.1"
+
+[zoxide]
+VERSION = "0.9.8"
+
+[hack_font]
+VERSION = "v3.4.0"
+VERSION_PACMAN = "3.4.0-1"
+SHA = "8ca33a60c791392d872b80d26c42f2bfa914a480f9eb2d7516d9f84373c36897"
+

@@ -33,25 +33,45 @@ macro_rules! check_bin_in_path_and_shaft {
 pub(crate) use check_bin_in_path_and_shaft;
 
 #[cfg(target_os = "linux")]
-macro_rules! check_installed_with_pacman {
+macro_rules! check_installed_pacman_package {
     ($l:literal) => {
-        if !corelib::epkg::pacman::is_installed($l)? {
-            cu::bail!(concat!(
-                "current '",
-                $l,
-                "' is not installed with pacman; please uninstall it"
-            ))
+        match corelib::epkg::pacman::installed_version($l)? {
+            None => return Ok(Verified::NotInstalled),
+            Some(x) => x,
         }
     };
-    ($l:literal, $system:literal) => {
-        if !corelib::epkg::pacman::is_installed($l)? {
-            cu::bail!(concat!(
-                "current '",
-                $l,
-                "' is not installed with pacman; please uninstall it or use the '",
-                $system,
-                "' package"
-            ))
+}
+#[cfg(target_os = "linux")]
+pub(crate) use check_installed_pacman_package;
+
+#[cfg(target_os = "linux")]
+macro_rules! check_installed_with_pacman {
+    ($bin:literal, $l:literal) => {
+        check_bin_in_path!($bin);
+        match corelib::epkg::pacman::installed_version($l)? {
+            None => {
+                cu::bail!(concat!(
+                    "current '",
+                    $bin,
+                    "' is not installed with pacman; please uninstall it"
+                ))
+            }
+            Some(x) => x,
+        }
+    };
+    ($bin:literal, $l:literal, $system:literal) => {
+        check_bin_in_path!($bin);
+        match corelib::epkg::pacman::installed_version($l)? {
+            None => {
+                cu::bail!(concat!(
+                    "current '",
+                    $bin,
+                    "' is not installed with pacman; please uninstall it or use the '",
+                    $system,
+                    "' package"
+                ))
+            }
+            Some(x) => x,
         }
     };
 }

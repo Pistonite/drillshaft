@@ -6,8 +6,8 @@ pub fn verify() -> cu::Result<Verified> {
     Ok(Verified::is_uptodate(!is_not_uptodate))
 }
 
-pub fn install() -> cu::Result<()> {
-    epkg::cargo::install("eza")
+pub fn install(ctx: &Context) -> cu::Result<()> {
+    epkg::cargo::install("eza", ctx.bar_ref())
 }
 
 pub fn uninstall() -> cu::Result<()> {

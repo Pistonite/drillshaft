@@ -51,6 +51,9 @@ impl Context {
     pub fn bar(&self) -> Option<Arc<cu::ProgressBar>> {
         self.bar.clone()
     }
+    pub fn bar_ref(&self) -> Option<&Arc<cu::ProgressBar>> {
+        self.bar.as_ref()
+    }
 
     pub fn temp_dir(&self) -> PathBuf {
         hmgr::paths::temp_dir(self.pkg_name())

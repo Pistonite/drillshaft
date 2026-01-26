@@ -1,5 +1,4 @@
 use corelib::hmgr;
-use cu::pre::*;
 
 use crate::config::Config;
 
@@ -15,6 +14,7 @@ pub fn check_init_environment(_config: &Config) -> cu::Result<()> {
 #[cfg(windows)]
 pub mod windows {
     use super::*;
+    use cu::pre::*;
     pub fn check_init_environment(config: &Config) -> cu::Result<()> {
         // check HOME = %USERPROFILE% for max compatibility
         if config.windows.control_home {

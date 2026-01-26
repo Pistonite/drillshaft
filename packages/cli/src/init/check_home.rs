@@ -86,7 +86,8 @@ to see why the auto-mount fails.
     items.rebuild_items(Some(&bar))?;
     bar.done();
 
-    if cfg!(windows) {
+    #[cfg(windows)]
+    {
         hmgr::windows::set_user("SHAFT_HOME", home_str)?;
         cu::info!("checking init script...");
         let init_script = r#"# shaft init script
@@ -99,7 +100,10 @@ to see why the auto-mount fails.
             "\nNew-Item -ItemType File -Path $PROFILE.CurrentUserAllHosts -Force | Out-Null;\nnotepad $PROFILE.CurrentUserAllHosts\n"
         );
         cu::prompt!("please press ENTER to continue once it's added")?;
-    } else {
+    }
+
+    #[cfg(not(windows))]
+    {
         let init_script = format!(
             r#"# shaft init script
 . {home_str}/items/init.bash
@@ -110,6 +114,7 @@ to see why the auto-mount fails.
         cu::hint!("you can replace `.bash` with the shell you use");
         cu::prompt!("please press ENTER to continue once it's added")?;
     }
+
     hmgr::add_env_assert([("SHAFT_HOME".to_string(), home_str.to_string())])?;
     hmgr::require_envchange_reinvocation(false)
 }

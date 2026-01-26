@@ -1,24 +1,16 @@
 use crate::pre::*;
 
 pub fn verify(min_version: &str) -> cu::Result<Verified> {
-    let Ok(git) = cu::which("git") else {
+    if cu::which("git").is_err() {
         return Ok(Verified::NotInstalled);
-    };
-    let (child, stdout) = git
-        .command()
-        .arg("--version")
-        .stdout(cu::pio::string())
-        .stdie_null()
-        .spawn()?;
-    child.wait_nz()?;
-    let stdout = stdout.join()??;
-    let version = stdout.strip_prefix("git version ").unwrap_or(&stdout);
-
-    if Version(version) >= min_version {
-        Ok(Verified::UpToDate)
     }
-    else {
-        Ok(Verified::NotUpToDate)
+    let stdout = command_output!("git", ["--version"]);
+    for line in stdout.lines() {
+        let Some(version) = line.strip_prefix("git version ") else {
+            continue;
+        };
+        return Ok(Verified::is_uptodate(!(Version(version) < min_version)));
     }
+    cu::bail!("failed to get git version from output: {stdout}");
 }
 

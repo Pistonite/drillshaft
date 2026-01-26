@@ -139,7 +139,10 @@ impl ItemMgr {
             return Ok(());
         }
 
-        self.rebuild_user_env_vars()?;
+        #[cfg(windows)]
+        {
+            self.rebuild_user_env_vars()?;
+        }
         self.rebuild_links()?;
 
         if cfg!(not(windows)) && self.bash_dirty {

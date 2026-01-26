@@ -2,27 +2,24 @@
 
 use crate::pre::*;
 
-pub mod version;
+mod version;
 
 register_binaries!("git");
 
-static GIT_VERSION: &str = "2.51.2";
-
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path!("git");
-    check_installed_with_pacman!("git", "system-git");
-    version::verify(GIT_VERSION)
+    check_installed_with_pacman!("git", "git", "system-git");
+    version::verify(metadata::git::VERSION)
 }
 
-pub fn install(_: &Context) -> cu::Result<()> {
+pub fn install(ctx: &Context) -> cu::Result<()> {
     opfs::ensure_terminated("git")?;
-    epkg::pacman::install("git")?;
+    epkg::pacman::install("git", ctx.bar_ref())?;
     Ok(())
 }
 
-pub fn uninstall(_: &Context) -> cu::Result<()> {
+pub fn uninstall(ctx: &Context) -> cu::Result<()> {
     opfs::ensure_terminated("git")?;
-    epkg::pacman::uninstall("git")?;
+    epkg::pacman::uninstall("git", ctx.bar_ref())?;
     Ok(())
 }
 

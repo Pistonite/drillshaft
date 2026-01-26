@@ -1,4 +1,3 @@
-use std::os::windows::fs::MetadataExt;
 use std::path::Path;
 #[cfg(windows)]
 use std::path::PathBuf;
@@ -7,6 +6,7 @@ use std::{io::Read, sync::Arc};
 use cu::pre::*;
 use sha2::{Digest, Sha256};
 
+#[cfg(windows)]
 use crate::opfs;
 
 /// Create a Windows symbolic link (requires sudo).
@@ -36,6 +36,8 @@ pub fn symlink_files(paths: &[(&Path, &Path)]) -> cu::Result<()> {
 }
 
 /// Create hardlinks. `from` is where the link will be and `to` is the target of the link
+#[cfg(windows)]
+#[cu::context("failed to create hard links")]
 pub fn hardlink_files(paths: &[(&Path, &Path)]) -> cu::Result<()> {
     let mut script = String::new();
     for (from, to) in paths {
@@ -53,7 +55,6 @@ pub fn hardlink_files(paths: &[(&Path, &Path)]) -> cu::Result<()> {
         .stderr(cu::lv::E)
         .stdin_null()
         .wait_nz()?;
-
     Ok(())
 }
 
@@ -62,6 +63,17 @@ fn build_link_powershell(out: &mut String, link_type: &str, from: &str, to: &str
     out.push_str(&format!(
         "New-Item -ItemType {link_type} -Path \"{from}\" -Target \"{to}\";"
     ))
+}
+
+/// Create hardlinks. `from` is where the link will be and `to` is the target of the link
+#[cfg(not(windows))]
+#[cu::context("failed to create hard links")]
+pub fn hardlink_files(paths: &[(&Path, &Path)]) -> cu::Result<()> {
+    for (from, to) in paths {
+        cu::fs::remove(from)?;
+        std::fs::hard_link(to, from)?;
+    }
+    Ok(())
 }
 
 #[cfg(windows)]
@@ -86,12 +98,28 @@ pub fn safe_remove_link(path: &Path) -> cu::Result<()> {
     Ok(())
 }
 
+#[cfg(not(windows))]
+pub fn safe_remove_link(path: &Path) -> cu::Result<()> {
+    cu::fs::remove(path)
+}
+
 /// Get the SHA256 checksum of a file and return it as a string
 #[cu::context("failed to hash file: '{}'", path.display())]
 pub fn file_sha256(path: &Path, bar: Option<Arc<cu::ProgressBar>>) -> cu::Result<String> {
+    #[cfg(unix)]
+    use std::os::unix::fs::MetadataExt;
+    #[cfg(windows)]
+    use std::os::windows::fs::MetadataExt;
+
     let mut hasher = Sha256::new();
     let mut reader = cu::fs::reader(&path)?;
-    let file_size = path.metadata()?.file_size();
+
+    let metadata = path.metadata()?;
+    #[cfg(unix)]
+    let file_size = metadata.size();
+    #[cfg(windows)]
+    let file_size = metadata.file_size();
+
     let mut buf = vec![0u8; 4096000].into_boxed_slice();
     let mut current_size = 0;
     loop {
@@ -172,6 +200,7 @@ fn quote_path_impl(path: &Path) -> cu::Result<String> {
 pub fn find_in_wingit(path: impl AsRef<Path>) -> cu::Result<PathBuf> {
     find_in_wingit_impl(path.as_ref())
 }
+#[cfg(windows)]
 #[cu::context("cannot find in git installation: '{}'", path.display())]
 fn find_in_wingit_impl(path: &Path) -> cu::Result<PathBuf> {
     let mut git_path = cu::which("git")?;

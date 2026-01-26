@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use cu::pre::*;
 
@@ -69,14 +70,14 @@ pub fn installed_info(package_name: &str) -> cu::Result<Option<CargoInstalledInf
 
 /// Install a package using `cargo install --git --rev`
 #[cu::context("failed to install '{package}' with cargo")]
-pub fn install_git_commit(package: &str, git: &str, rev: &str) -> cu::Result<()> {
+pub fn install_git_commit(package: &str, git: &str, rev: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
     let mut state = cargo::instance()?;
     let (child, bar) = cu::which("cargo")?
         .command()
         .add(cu::args![
             "install", package, "--git", git, "--rev", rev, "--locked"
         ])
-        .preset(cu::pio::cargo(format!("cargo install '{package}'")))
+        .preset(cu::pio::cargo(format!("cargo install '{package}'")).configure_spinner(|builder| builder.parent(bar.cloned())))
         .spawn()?;
     child.wait_nz()?;
     bar.done();
@@ -86,12 +87,12 @@ pub fn install_git_commit(package: &str, git: &str, rev: &str) -> cu::Result<()>
 
 /// Install a package using `cargo install`
 #[cu::context("failed to install '{package}' with cargo")]
-pub fn install(package: &str) -> cu::Result<()> {
+pub fn install(package: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
     let mut state = cargo::instance()?;
     let (child, bar) = cu::which("cargo")?
         .command()
         .add(cu::args!["install", package, "--locked"])
-        .preset(cu::pio::cargo(format!("cargo install '{package}'")))
+        .preset(cu::pio::cargo(format!("cargo install '{package}'")).configure_spinner(|builder| builder.parent(bar.cloned())))
         .spawn()?;
     child.wait_nz()?;
     bar.done();
@@ -101,7 +102,7 @@ pub fn install(package: &str) -> cu::Result<()> {
 
 /// Install a package using `cargo binstall` (with fallback)
 #[cu::context("failed to install '{package}' with cargo-binstall")]
-pub fn binstall(package: &str) -> cu::Result<()> {
+pub fn binstall(package: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
     let mut state = cargo::instance()?;
     let (child, bar) = cu::which("cargo-binstall")?
         .command()
@@ -112,7 +113,7 @@ pub fn binstall(package: &str) -> cu::Result<()> {
             "--no-confirm",
             "--locked",
         ])
-        .stdout(cu::pio::spinner(format!("cargo binstall '{package}'")))
+        .stdout(cu::pio::spinner(format!("cargo binstall '{package}'")).configure_spinner(|builder| builder.parent(bar.cloned())))
         .stderr(cu::lv::E)
         .stdin_null()
         .spawn()?;
@@ -124,7 +125,7 @@ pub fn binstall(package: &str) -> cu::Result<()> {
 
 /// Install a package using `cargo binstall --git` (with fallback)
 #[cu::context("failed to install '{package}' with cargo-binstall")]
-pub fn binstall_git(package: &str, git: &str) -> cu::Result<()> {
+pub fn binstall_git(package: &str, git: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
     let mut state = cargo::instance()?;
     let (child, bar) = cu::which("cargo-binstall")?
         .command()
@@ -137,7 +138,7 @@ pub fn binstall_git(package: &str, git: &str) -> cu::Result<()> {
             "--git",
             git
         ])
-        .stdout(cu::pio::spinner(format!("cargo binstall '{package}'")))
+        .stdout(cu::pio::spinner(format!("cargo binstall '{package}'")).configure_spinner(|builder| builder.parent(bar.cloned())))
         .stderr(cu::lv::E)
         .stdin_null()
         .spawn()?;

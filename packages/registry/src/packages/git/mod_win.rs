@@ -2,6 +2,8 @@
 
 use crate::pre::*;
 
+mod version;
+
 register_binaries!("git", "scalar");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
@@ -11,8 +13,7 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
         cu::bail!("current 'git' is not the vfs version (microsoft.git); please uninstall it or use the 'system-git' package");
     }
     check_bin_in_path!("scalar");
-    let version = version.strip_prefix("git version").unwrap_or(&version);
-    Ok(Verified::is_uptodate(!(Version(version.trim()) < metadata::git::VERSION)))
+    version::verify(metadata::git::VERSION)
 }
 
 pub fn install(_: &Context) -> cu::Result<()> {

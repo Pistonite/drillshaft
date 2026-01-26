@@ -74,12 +74,7 @@ pub fn sudo_path(path: &Path, reason: &str) -> cu::Result<cu::Command<(), (), ()
 fn sudo_path_name(path: &Path, name: &str, reason: &str) -> cu::Result<cu::Command<(), (), ()>> {
     #[cfg(not(windows))]
     {
-        cu::warn!(
-            "[sudo] will spawn this executable: {}\n- reason: {}",
-            path.display(),
-            reason
-        );
-        validate_credential()?;
+        validate_credential(path, reason)?;
     }
     #[cfg(windows)]
     {
@@ -115,7 +110,7 @@ fn sudo_path_name(path: &Path, name: &str, reason: &str) -> cu::Result<cu::Comma
 }
 
 #[allow(unused)]
-fn validate_credential() -> cu::Result<()> {
+fn validate_credential(path: &Path, reason: &str) -> cu::Result<()> {
     let sudo_path = which_sudo()?;
     // check if user's cached credential is valid
     if let Ok(true) = check_credential(&sudo_path) {
@@ -123,10 +118,16 @@ fn validate_credential() -> cu::Result<()> {
     }
     let prompt = match get_user_name().ok() {
         Some(x) => {
-            format!("[sudo] password for {x}")
+            format!("[sudo] will spawn this executable: {}\n- reason: {}\n
+password for {}",
+                path.display(), reason, x
+            )
         }
         None => {
-            format!("[sudo] password")
+            format!("[sudo] will spawn this executable: {}\n- reason: {}\n
+password",
+                path.display(), reason
+            )
         }
     };
     let mut secs = 1;

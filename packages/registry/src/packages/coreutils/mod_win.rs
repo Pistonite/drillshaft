@@ -4,7 +4,7 @@ use crate::pre::*;
 
 mod eza;
 
-register_binaries!("ls", "diff");
+register_binaries!("ls", "diff", "gzip", "sed", "grep");
 
 pub fn binary_dependencies() -> EnumSet<BinId> {
     enum_set! { BinId::Git | BinId::CargoBinstall }
@@ -19,14 +19,15 @@ pub fn verify(ctx: &Context) -> cu::Result<Verified> {
     check_bin_in_path_and_shaft!("sed");
     check_bin_in_path_and_shaft!("grep");
     let which_info = check_installed_with_cargo!("which");
-    if Version(&which_info.version) < metadata::coreutils::which::VERSION {
+    if Version(&which_info.version) < metadata::shellutils::which::VERSION {
         return Ok(Verified::NotUpToDate);
     }
     let coreutils_info = check_installed_with_cargo!("coreutils");
     if Version(&coreutils_info.version) < metadata::coreutils::uutils::VERSION {
         return Ok(Verified::NotUpToDate);
     }
-    Ok(Verified::UpToDate)
+    let alias_version = hmgr::get_cached_version("coreutils-alias")?;
+    Ok(Verified::is_uptodate(alias_version.as_deref() == Some(metadata::coreutils::ALIAS_VERSION)))
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {
@@ -38,6 +39,8 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
 
 pub fn uninstall(ctx: &Context) -> cu::Result<()> {
     eza::uninstall()?;
+    epkg::cargo::uninstall("coreutils")?;
+    epkg::cargo::uninstall("which")?;
     Ok(())
 }
 
@@ -52,61 +55,72 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     cu::fs::copy(&coreutils_src, &coreutils_path)?;
     let coreutils_path = coreutils_path.into_utf8()?;
 
-    let list_output = command_output!("coreutils", ["--list"]);
-    let utils: Vec<_> = list_output.lines()
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty() && s.chars().all(|c| c.is_alphanumeric()))
-        .collect();
-    {
-        let bar = cu::progress("configuring coreutils")
-            .total(utils.len())
-            .parent(ctx.bar())
-            .spawn();
-        let has_pwsh = ctx.is_installed(PkgId::Pwsh);
+    let alias_version = hmgr::get_cached_version("coreutils-alias")?;
+    if alias_version.as_deref() != Some(metadata::coreutils::ALIAS_VERSION) {
+        let list_output = command_output!("coreutils", ["--list"]);
+        let utils: Vec<_> = list_output.lines()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty() && s.chars().all(|c| c.is_alphanumeric()))
+            .collect();
+        {
+            let bar = cu::progress("configuring coreutils")
+                .total(utils.len())
+                .parent(ctx.bar())
+                .spawn();
+            let has_pwsh = ctx.is_installed(PkgId::Pwsh);
 
-        // Run shell checks in parallel with pool of 4
-        cu::co::run(async move {
-            let pool = cu::co::pool(4);
-            let mut handles = Vec::with_capacity(utils.len());
-            for util in &utils {
-                let util = util.to_string();
-                let handle = pool.spawn(async move {
-                    let is_alias = shell_has_alias("powershell", &util).await?
-                    || (has_pwsh && shell_has_alias("pwsh", &util).await?);
-                    let is_binary = shell_has_binary("powershell", &util).await?
-                    || (has_pwsh && shell_has_binary("pwsh", &util).await?);
-                    cu::Ok((util, is_alias, is_binary))
-                });
-                handles.push(handle);
-            }
+            // Run shell checks in parallel with pool of 4
+            cu::co::run(async move {
+                let pool = cu::co::pool(4);
+                let mut handles = Vec::with_capacity(utils.len());
+                for util in &utils {
+                    let util = util.to_string();
+                    let handle = pool.spawn(async move {
+                        let is_alias = shell_has_alias("powershell", &util).await?
+                        || (has_pwsh && shell_has_alias("pwsh", &util).await?);
+                        let is_binary = shell_has_binary("powershell", &util).await?
+                        || (has_pwsh && shell_has_binary("pwsh", &util).await?);
+                        cu::Ok((util, is_alias, is_binary))
+                    });
+                    handles.push(handle);
+                }
 
-            let mut set = cu::co::set(handles);
-            while let Some(result) = set.next().await {
-                let (util, is_alias, is_binary) = result??;
-                cu::progress!(bar += 1, "{util}");
-                let link_path = hmgr::paths::binary(bin_name!(&util)).into_utf8()?;
-                if is_alias {
-                    cu::info!("removing powershell alias: {util}");
-                    ctx.add_item(hmgr::Item::Pwsh(format!("Remove-Item Alias:{util} -Force")))?;
+                let mut set = cu::co::set(handles);
+                while let Some(result) = set.next().await {
+                    let (util, is_alias, is_binary) = result??;
+                    cu::progress!(bar += 1, "{util}");
+                    let link_path = hmgr::paths::binary(bin_name!(&util)).into_utf8()?;
+                    if is_alias {
+                        cu::info!("removing powershell alias: {util}");
+                        ctx.add_item(hmgr::Item::Pwsh(format!("Remove-Item Alias:{util} -Force")))?;
+                    }
+                    if is_binary {
+                        cu::info!("overriding powershell command: {util}");
+                        ctx.add_item(hmgr::Item::Pwsh(format!("Set-Alias -Name {util} -Value '{link_path}'")))?;
+                    }
+                    ctx.add_item(hmgr::Item::LinkBin(link_path, coreutils_path.clone()))?;
                 }
-                if is_binary {
-                    cu::info!("overriding powershell command: {util}");
-                    ctx.add_item(hmgr::Item::Pwsh(format!("Set-Alias -Name {util} -Value '{link_path}'")))?;
-                }
-                ctx.add_item(hmgr::Item::LinkBin(link_path, coreutils_path.clone()))?;
-            }
-            cu::Ok(())
-        })?;
-    }
-    // configure utils from mingw
-    const MINGW_UTILS: &[&str] = &["diff", "diff3", "cmp", "gzip", "sed", "grep"];
-    for util in MINGW_UTILS {
-        let exe_path = opfs::find_in_wingit(format!("usr/bin/{util}.exe"))?;
+                cu::Ok(())
+            })?;
+        }
+        // configure utils from mingw
+        let exe_path = opfs::find_in_wingit(format!("usr/bin/grep.exe"))?;
         ctx.add_item(hmgr::Item::ShimBin(
             bin_name!(util),
-            vec![exe_path.into_utf8()?],
+            vec![exe_path.into_utf8()?, "--color=auto"],
         ))?;
+        const MINGW_UTILS: &[&str] = &["diff", "diff3", "cmp", "gzip", "sed"];
+        for util in MINGW_UTILS {
+            let exe_path = opfs::find_in_wingit(format!("usr/bin/{util}.exe"))?;
+            ctx.add_item(hmgr::Item::ShimBin(
+                bin_name!(util),
+                vec![exe_path.into_utf8()?],
+            ))?;
+        }
+
+        hmgr::set_cached_version("coreutils-alias", metadata::coreutils::ALIAS_VERSION)?;
     }
+
     Ok(())
 }
 

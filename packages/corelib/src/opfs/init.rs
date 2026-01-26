@@ -54,7 +54,6 @@ static VERSION: OnceLock<String> = OnceLock::new();
 
 /// Initialize the platform variable. Called once at beginning when launching
 /// the package manager
-#[cfg(target_os = "windows")]
 #[inline(always)]
 pub fn init(version: &str) -> cu::Result<()> {
     crate::internal::ensure_main_thread()?; // record main thread ID
@@ -64,6 +63,7 @@ pub fn init(version: &str) -> cu::Result<()> {
 
 #[cfg(target_os = "linux")]
 mod imp {
+    use super::{CURRENT_FLAVOR, LinuxFlavor};
     use std::path::Path;
 
     pub fn init() -> cu::Result<()> {
