@@ -27,11 +27,18 @@ fn main() -> cu::Result<()> {
             }
             let arg0 = &args[0];
             let arg_rest = &args[1..];
-            if args.len() > 1 {
-                writeln!(output, "            let mut c = Command::new({arg0:?});")?;
-                writeln!(output, "            c.args({arg_rest:?}); c }}")?;
+            if arg0 == "/bash/" {
+                // bash wrapper
+                // config: [ "/bash/", "myexec", "arg1" ]
+                // we execute: bash -c "myexec arg1 ..."
+                writeln!(output, "            return lib::exec_bash_replace(&{arg_rest:?}, args); }}")?;
             } else {
-                writeln!(output, "            Command::new({arg0:?}) }}")?;
+                if args.len() > 1 {
+                    writeln!(output, "            let mut c = Command::new({arg0:?});")?;
+                    writeln!(output, "            c.args({arg_rest:?}); c }}")?;
+                } else {
+                    writeln!(output, "            Command::new({arg0:?}) }}")?;
+                }
             }
         }
         writeln!(output, "        _ => {{ eprintln!(\"invalid argument\"); return ExitCode::FAILURE; }}")?;

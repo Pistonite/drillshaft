@@ -2,7 +2,8 @@
 
 use crate::pre::*;
 
-static INTERNAL_VERSION: &str = "6";
+static CFG_VERSION: VersionCache = VersionCache::new("terminal", metadata::terminal::CONFIG_VERSION);
+static FONT_VERSION: VersionCache = VersionCache::new("hack-nerd-font", metadata::hack_font::VERSION);
 
 pub fn binary_dependencies() -> EnumSet<BinId> {
     enum_set! { BinId::_7z }
@@ -12,11 +13,10 @@ pub fn config_dependencies() -> EnumSet<PkgId> {
     enum_set! { PkgId::Pwsh }
 }
 
-pub fn verify(ctx: &Context) -> cu::Result<Verified> {
+pub fn verify(_: &Context) -> cu::Result<Verified> {
     check_bin_in_path!("wt");
-    let id = ctx.pkg.to_str();
-    let version = hmgr::get_cached_version(id)?;
-    Ok(Verified::is_uptodate(version.as_deref() == Some(INTERNAL_VERSION)))
+    let is_config_uptodate = CFG_VERSION.is_uptodate()?;
+    Ok(Verified::is_uptodate(is_config_uptodate))
 }
 
 pub fn download(ctx: &Context) -> cu::Result<()> {
@@ -26,23 +26,22 @@ pub fn download(ctx: &Context) -> cu::Result<()> {
     Ok(())
 }
 
-pub fn install(_: &Context) -> cu::Result<()> {
+pub fn install(ctx: &Context) -> cu::Result<()> {
     if cu::which("wt").is_err() {
         cu::info!("installing Microsoft.WindowsTerminal with winget");
         opfs::ensure_terminated("wt.exe")?;
         opfs::ensure_terminated("WindowsTerminal.exe")?;
-        epkg::winget::install("Microsoft.WindowsTerminal")?;
+        epkg::winget::install("Microsoft.WindowsTerminal", ctx.bar_ref())?;
     }
     Ok(())
 }
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
-    let font_version = hmgr::get_cached_version("hack-nerd-font")?;
-    if font_version.as_deref() != Some(metadata::hack_font::VERSION) {
+    if ctx.needs_configure(FONT_VERSION) {
         cu::info!("installing hack nerd font...");
         let zip_path = hmgr::paths::download("hack-nerd-font.zip", font_download_url());
         let temp_dir = hmgr::paths::temp_dir("hack-nerd-font");
-        opfs::un7z(&zip_path, &temp_dir)?;
+        opfs::un7z(&zip_path, &temp_dir, ctx.bar_ref())?;
 
         // install all *.ttf files in temp_dir for current user
         let script = format!(
@@ -66,23 +65,25 @@ foreach ($file in $files) {{
             .stdin_null()
             .wait_nz()?;
 
-        hmgr::set_cached_version("hack-nerd-font", metadata::hack_font::VERSION)?;
+        FONT_VERSION.update()?;
     }
 
-    let setting_path = setting_json()?;
-    let config = cu::check!(json::parse::<json::Value>(&cu::fs::read_string(&setting_path)?), "failed to parse config for windows terminal")?;
-    let input = json! {
-        {
-            "config": config,
-            "meta": {
-                "pwsh_installed": ctx.is_installed(PkgId::Pwsh),
-                "install_dir": hmgr::paths::install_dir("pwsh").as_utf8()?,
+    if ctx.needs_configure(CFG_VERSION) {
+        let setting_path = setting_json()?;
+        let config = cu::check!(json::parse::<json::Value>(&cu::fs::read_string(&setting_path)?), "failed to parse config for windows terminal")?;
+        let input = json! {
+            {
+                "config": config,
+                "meta": {
+                    "pwsh_installed": ctx.is_installed(PkgId::Pwsh),
+                    "install_dir": hmgr::paths::install_dir("pwsh").as_utf8()?,
+                }
             }
-        }
-    };
-    let config = cu::check!(jsexe::run(&input, include_str!("./config.js")), "failed to configure windows terminal")?;
-    cu::fs::write_json_pretty(setting_path, &config)?;
-    hmgr::set_cached_version(ctx.pkg.to_str(), INTERNAL_VERSION)?;
+        };
+        let config = cu::check!(jsexe::run(&input, include_str!("./config.js")), "failed to configure windows terminal")?;
+        cu::fs::write_json_pretty(setting_path, &config)?;
+        CFG_VERSION.update()?;
+    }
 
     Ok(())
 }

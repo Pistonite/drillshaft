@@ -8,7 +8,7 @@ pub mod opfs;
 /// JSON execution
 pub mod jsexe;
 
-pub use hmgr::{ItemMgr, Version};
+pub use hmgr::{ItemMgr, Version, VersionCache};
 
 pub(crate) mod internal;
 

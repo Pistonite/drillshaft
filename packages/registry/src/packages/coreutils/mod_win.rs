@@ -4,13 +4,15 @@ use crate::pre::*;
 
 mod eza;
 
+static ALIAS_VERSION: VersionCache = VersionCache::new("coreutils-alias", metadata::coreutils::ALIAS_VERSION);
+
 register_binaries!("ls", "diff", "gzip", "sed", "grep");
 
 pub fn binary_dependencies() -> EnumSet<BinId> {
     enum_set! { BinId::Git | BinId::CargoBinstall }
 }
 
-pub fn verify(ctx: &Context) -> cu::Result<Verified> {
+pub fn verify(_: &Context) -> cu::Result<Verified> {
     eza::verify()?;
     check_bin_in_path_and_shaft!("diff");
     check_bin_in_path_and_shaft!("diff3");
@@ -26,18 +28,17 @@ pub fn verify(ctx: &Context) -> cu::Result<Verified> {
     if Version(&coreutils_info.version) < metadata::coreutils::uutils::VERSION {
         return Ok(Verified::NotUpToDate);
     }
-    let alias_version = hmgr::get_cached_version("coreutils-alias")?;
-    Ok(Verified::is_uptodate(alias_version.as_deref() == Some(metadata::coreutils::ALIAS_VERSION)))
+    Ok(Verified::is_uptodate(ALIAS_VERSION.is_uptodate()?))
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {
-    eza::install()?;
-    epkg::cargo::binstall("coreutils")?;
-    epkg::cargo::install_git_commit("which", metadata::shellutils::REPO, metadata::shellutils::COMMIT)?;
+    eza::install(ctx)?;
+    epkg::cargo::binstall("coreutils", ctx.bar_ref())?;
+    epkg::cargo::install_git_commit("which", metadata::shellutils::REPO, metadata::shellutils::COMMIT, ctx.bar_ref())?;
     Ok(())
 }
 
-pub fn uninstall(ctx: &Context) -> cu::Result<()> {
+pub fn uninstall(_: &Context) -> cu::Result<()> {
     eza::uninstall()?;
     epkg::cargo::uninstall("coreutils")?;
     epkg::cargo::uninstall("which")?;
@@ -55,8 +56,7 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     cu::fs::copy(&coreutils_src, &coreutils_path)?;
     let coreutils_path = coreutils_path.into_utf8()?;
 
-    let alias_version = hmgr::get_cached_version("coreutils-alias")?;
-    if alias_version.as_deref() != Some(metadata::coreutils::ALIAS_VERSION) {
+    if ctx.needs_configure(ALIAS_VERSION) {
         let list_output = command_output!("coreutils", ["--list"]);
         let utils: Vec<_> = list_output.lines()
             .map(|s| s.trim())
@@ -104,10 +104,10 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
             })?;
         }
         // configure utils from mingw
-        let exe_path = opfs::find_in_wingit(format!("usr/bin/grep.exe"))?;
+        let exe_path = opfs::find_in_wingit("usr/bin/grep.exe")?;
         ctx.add_item(hmgr::Item::ShimBin(
-            bin_name!(util),
-            vec![exe_path.into_utf8()?, "--color=auto"],
+            bin_name!("grep").to_string(),
+            vec![exe_path.into_utf8()?, "--color=auto".to_string()],
         ))?;
         const MINGW_UTILS: &[&str] = &["diff", "diff3", "cmp", "gzip", "sed"];
         for util in MINGW_UTILS {
@@ -118,7 +118,7 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
             ))?;
         }
 
-        hmgr::set_cached_version("coreutils-alias", metadata::coreutils::ALIAS_VERSION)?;
+        ALIAS_VERSION.update()?;
     }
 
     Ok(())

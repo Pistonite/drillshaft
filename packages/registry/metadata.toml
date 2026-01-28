@@ -5,29 +5,32 @@ VERSION = "25.01"
 
 [pwsh]
 # using preview version to enable tilde (~) expansion
+REPO = "https://github.com/PowerShell/PowerShell"
 VERSION = "7.6.0-preview.6"
-'cfg(target_arch="aarch64")'.SHA = "36dc90e7f0e7870b0970c9a58790de4de4217e65acafaf790e87b7c97d93649f"
-'cfg(target_arch="x86_64")'.SHA = "481ce45bd9ebfab9a5b254a35f145fb6259bd452ae67d92ab1d231b6367987d9"
+'cfg(target_arch="aarch64")'.SHA = '36dc90e7f0e7870b0970c9a58790de4de4217e65acafaf790e87b7c97d93649f'
+'cfg(target_arch="x86_64")'.SHA = '481ce45bd9ebfab9a5b254a35f145fb6259bd452ae67d92ab1d231b6367987d9'
 
 [cargo_binstall]
-VERSION = "1.17.3"
+VERSION = "1.17.4"
 
 [coreutils]
-ALIAS_VERSION = "1"
+ALIAS_VERSION = "2"
 eza.VERSION = "0.23.4"
 uutils.VERSION = "0.5.0"
 
 [shellutils]
-ALIAS_VERSION = "1"
+ALIAS_VERSION = "4"
 REPO = "https://github.com/Pistonite/shellutils"
 COMMIT = "adcda5952d62c758573a9cf9fdf3671b0260ecb4"
 which.VERSION = "0.1.2"
 viopen.VERSION = "0.1.2"
+vipath.VERSION = "0.1.4"
 n.VERSION = "0.1.1"
 wsclip.VERSION = "0.1.4"
 
 [git]
 'cfg(windows)'.VERSION = "2.52.0.vfs"
+'cfg(windows)'.ALIAS_VERSION = "1"
 'cfg(target_os="linux")'.VERSION = "2.52.0"
 
 [perl]
@@ -47,9 +50,13 @@ wsclip.VERSION = "0.1.4"
 [fzf]
 'cfg(target_os="linux")'.VERSION = "0.67.0"
 'cfg(windows)'.VERSION = "0.67.0"
+'cfg(all(windows,target_arch="aarch64"))'.SHA = "4a39934cc8f670048a7fb21dde09096adcbda7adc676010dd9cec90780d3b9df"
+'cfg(all(windows,target_arch="x86_64"))'.SHA = "cad95326ed416d14226a03425513b049f5bc9a41f30a355e5fe204a29e666867"
 
 [jq]
 'cfg(target_os="linux")'.VERSION = "1.8.1"
+'cfg(windows)'.VERSION = "1.8.1"
+'cfg(windows)'.SHA = "23cb60a1354eed6bcc8d9b9735e8c7b388cd1fdcb75726b93bc299ef22dd9334"
 
 [bat]
 VERSION = "0.26.1"
@@ -70,4 +77,7 @@ VERSION = "0.9.8"
 VERSION = "v3.4.0"
 VERSION_PACMAN = "3.4.0-1"
 SHA = "8ca33a60c791392d872b80d26c42f2bfa914a480f9eb2d7516d9f84373c36897"
+
+[terminal]
+'cfg(windows)'.CONFIG_VERSION = "7"
 

@@ -37,11 +37,10 @@ pub fn run(input: &json::Value, script: &str) -> cu::Result<json::Value> {
     let output = match context.eval(JsSource::from_bytes(&script)) {
         Ok(x) => {
             let s = cu::check!(x.as_string(), "javascript output is not a string: {x:?}")?;
-            let s = cu::check!(
+            cu::check!(
                 s.to_std_string(),
                 "javascript output cannot be converted to utf-8"
-            )?;
-            s
+            )?
         }
         Err(e) => {
             cu::bail!("error evaluating javascript: {e:?}");

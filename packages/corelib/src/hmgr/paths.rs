@@ -94,7 +94,7 @@ home! {
     version_cache_json:    "version_cache.json",
 }
 
-/// HOME/config/pkg.toml
+/// HOME/config/<pkg>.toml
 #[inline(always)]
 pub fn config_file(package: &str) -> PathBuf {
     let mut p = config_root();

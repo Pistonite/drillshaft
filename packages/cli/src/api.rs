@@ -80,47 +80,6 @@ impl CliApi {
 
         let _lock = hmgr::lock()?;
 
-        let previous = hmgr::extract_previously_interrupted_json_command();
-        if matches!(&command, CliCommand::Resume(_)) {
-            if self.abort_previous {
-                if previous.is_some() {
-                    cu::info!("aborted previous command; nothing to resume");
-                } else {
-                    cu::warn!("no previous command to abort");
-                }
-            } else {
-                if let Some((cmd_args, cmd_str)) = previous {
-                    let previous_command = cu::check!(
-                        json::parse::<CliCommand>(&cmd_str),
-                        "previous command file is corrupted"
-                    )?;
-                    cu::info!("resuming: {cmd_args}");
-                    previous_command.run()?;
-                } else {
-                    cu::warn!("no previous command to resume");
-                }
-            }
-            return Ok(());
-        }
-        if let Some((cmd_args, cmd_str)) = previous {
-            match json::parse::<CliCommand>(&cmd_str) {
-                Err(e) => {
-                    cu::error!("failed to parse previous command: {e:?}");
-                    cu::warn!("ignoring corrupted previous command file");
-                }
-                Ok(previous_command) => {
-                    cu::warn!("found previously interrupted command:\n  {cmd_args}");
-                    cu::hint!(
-                        "the command can be resumed.\n- Y = execute previous command, then execute current command\n- N = only execute current command, discard previous command"
-                    );
-                    if cu::yesno!("resume previous command?")? {
-                        cu::info!("resuming: {cmd_args}");
-                        previous_command.run()?;
-                    }
-                }
-            }
-        }
-
         command.run()
     }
 }
@@ -157,16 +116,6 @@ impl AsRef<cu::cli::Flags> for CliCommand {
 }
 impl CliCommand {
     pub fn run(self) -> cu::Result<()> {
-        if !matches!(self, CliCommand::Version(_) | CliCommand::Resume(_)) {
-            match json::stringify_pretty(&self) {
-                Err(e) => {
-                    cu::error!("failed to stringify command: {e:?}");
-                }
-                Ok(s) => {
-                    hmgr::save_command_json(&s);
-                }
-            }
-        }
         match self {
             CliCommand::Version(_) => {}
             CliCommand::Resume(_) => {}

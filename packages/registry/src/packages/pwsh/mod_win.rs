@@ -8,11 +8,17 @@ pub fn binary_dependencies() -> EnumSet<BinId> {
     enum_set! { BinId::_7z }
 }
 
+pub fn config_dependencies() -> EnumSet<PkgId> {
+    enum_set! { PkgId::Shellutils }
+}
+
 pub fn verify(ctx: &Context) -> cu::Result<Verified> {
     match cu::which("pwsh") {
         Err(_) => return Ok(Verified::NotInstalled),
         Ok(path) => {
             if path != hmgr::paths::binary(bin_name!("pwsh"))
+            // sometimes inside the shell, the pwsh executable can point
+            // to the real executable, so we need this extra check
             && path != ctx.install_dir().join(bin_name!("pwsh"))
             {
                 cu::bail!(
@@ -40,7 +46,7 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
 
     let pwsh_zip = hmgr::paths::download("pwsh.zip", download_url());
     let pwsh_dir = ctx.install_dir();
-    opfs::un7z(pwsh_zip, &pwsh_dir)?;
+    opfs::un7z(pwsh_zip, &pwsh_dir, ctx.bar_ref())?;
 
     Ok(())
 }
@@ -52,6 +58,16 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
             pwsh_exe.as_utf8()?.to_string()
         ]
     ))?;
+    // get ps7 profile location
+    let (child, stdout) = pwsh_exe.command()
+        .args(["-NoLogo", "-NoProfile", "-c", "$Profile.AllUsersAllHosts"])
+        .stdout(cu::pio::string())
+        .stderr(cu::lv::E)
+        .stdin_null()
+        .spawn()?;
+    child.wait_nz()?;
+    let ps7_profile_path = Path::new(stdout.join()??.trim()).normalize()?;
+    let mut edit_profile_path = ps7_profile_path.clone();
     let config = ctx.load_config_file_or_default(include_str!("config.toml"))?;
     if let Some(toml::Value::String(ps5_profile)) = config.get("use-ps5-profile") {
         if !matches!(ps5_profile.as_str(),
@@ -68,18 +84,17 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
             .spawn()?;
         child.wait_nz()?;
         let ps5_profile_path = Path::new(stdout.join()??.trim()).normalize()?;
-        if let Ok(ps5_profile_content) = cu::fs::read_string(ps5_profile_path) {
-            // get ps7 profile location
-            let (child, stdout) = pwsh_exe.command()
-                .args(["-NoLogo", "-NoProfile", "-c", "$Profile.AllUsersAllHosts"])
-                .stdout(cu::pio::string())
-                .stderr(cu::lv::E)
-                .stdin_null()
-                .spawn()?;
-            child.wait_nz()?;
-            let ps7_profile_path = Path::new(stdout.join()??.trim()).normalize()?;
+        if let Ok(ps5_profile_content) = cu::fs::read_string(&ps5_profile_path) {
             cu::fs::write(ps7_profile_path, ps5_profile_content)?;
         }
+        edit_profile_path = ps5_profile_path;
+    }
+
+    if ctx.is_installed(PkgId::Shellutils) {
+            ctx.add_item(hmgr::Item::ShimBin(bin_name!("vipwsh").to_string(), vec![
+                cu::which("viopen")?.into_utf8()?,
+                edit_profile_path.into_utf8()?
+            ]))?;
     }
     Ok(())
 }
@@ -95,7 +110,8 @@ pub fn uninstall(ctx: &Context) -> cu::Result<()> {
 }
 
 fn download_url() -> String {
+    let repo = metadata::pwsh::REPO;
     let arch = if_arm!("arm64", else "x64");
     let version = metadata::pwsh::VERSION;
-    format!("https://github.com/PowerShell/PowerShell/releases/download/v{version}/PowerShell-{version}-win-{arch}.zip")
+    format!("{repo}/releases/download/v{version}/PowerShell-{version}-win-{arch}.zip")
 }

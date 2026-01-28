@@ -6,7 +6,42 @@ use crate::hmgr;
 
 #[cfg(windows)]
 pub mod windows {
-    pub use win_envedit::*;
+    use std::collections::BTreeMap;
+    use std::sync::Mutex;
+
+    pub use win_envedit::get_user;
+    static USER_THIS_SESSION: Mutex<BTreeMap<String, String>> = Mutex::new(BTreeMap::new());
+    /// Get user environment variable at the start of the session,
+    /// before any set calls
+    #[inline(always)]
+    pub fn get_user_this_session(key: impl AsRef<str>) -> cu::Result<String> {
+        get_user_this_session_impl(key.as_ref())
+    }
+    fn get_user_this_session_impl(key: &str) -> cu::Result<String> {
+        let this_session = USER_THIS_SESSION.lock().expect("session env lock failed");
+        if let Some(value) = this_session.get(key) {
+            return Ok(value.to_string());
+        }
+        // note there could still be a time of read time of use race condition here
+        win_envedit::get_user(key)
+    }
+
+    /// Set user environment variable
+    #[inline(always)]
+    pub fn set_user(key: impl AsRef<str>, value: impl AsRef<str>) -> cu::Result<()> {
+        set_user_impl(key.as_ref(), value.as_ref())
+    }
+    fn set_user_impl(key: &str, value: &str) -> cu::Result<()> {
+        let mut this_session = USER_THIS_SESSION.lock().expect("session env lock failed");
+        if this_session.contains_key(key) {
+            drop(this_session);
+            win_envedit::set_user(key, value)?;
+            return Ok(());
+        }
+        let old_value = win_envedit::get_user(key)?;
+        this_session.insert(key.to_string(), old_value);
+        win_envedit::set_user(key, value)
+    }
 }
 
 /// Add environment assert to ensure proper environment the next time the tool is invoked
@@ -41,31 +76,20 @@ pub fn init_env() -> cu::Result<()> {
     save_env_json(&new_env);
     if !ok {
         cu::error!("some environment variables are not the expected value");
-        return require_envchange_reinvocation(false);
+        return require_envchange_reinvocation();
     }
     Ok(())
 }
 
 /// Error with message for restarting terminal process to refresh environment
 #[inline(always)]
-pub fn require_envchange_reinvocation(resume: bool) -> cu::Result<()> {
-    match (cfg!(windows), resume) {
-        (true, true) => {
-            cu::bail!(
-                "environment has changed, please restart (all) terminal process, then run `shaft resume`."
-            );
-        }
-        (true, false) => {
-            cu::bail!("environment has changed, please restart (all) terminal process.");
-        }
-        (false, true) => {
-            cu::bail!(
-                "environment has changed, please restart the shell, then run `shaft resume`."
-            );
-        }
-        (false, false) => {
-            cu::bail!("environment has changed, please restart the shell.");
-        }
+pub fn require_envchange_reinvocation() -> cu::Result<()> {
+    if cfg!(windows) {
+        cu::bail!(
+            "environment has changed, please restart (all) terminal process, then rerun the command"
+        );
+    } else {
+        cu::bail!("environment has changed, please restart the shell, then rerun the command");
     }
 }
 

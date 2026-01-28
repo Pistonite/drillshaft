@@ -73,8 +73,27 @@ impl<'a> fmt::Display for Version<'a> {
         fmt::Display::fmt(self.0, f)
     }
 }
+#[derive(Clone, Copy)]
+pub struct VersionCache {
+    id: &'static str,
+    expected: &'static str,
+}
+impl VersionCache {
+    pub const fn new(id: &'static str, expected: &'static str) -> Self {
+        Self { id, expected }
+    }
+    /// Check if the cached version is the same as expected
+    pub fn is_uptodate(self) -> cu::Result<bool> {
+        let cached_version = get_cached_version(self.id)?;
+        Ok(cached_version.as_deref() == Some(self.expected))
+    }
+    /// Set the cached version to be the expected
+    pub fn update(self) -> cu::Result<()> {
+        set_cached_version(self.id, self.expected)
+    }
+}
 
-pub fn get_cached_version(identifier: &str) -> cu::Result<Option<String>> {
+fn get_cached_version(identifier: &str) -> cu::Result<Option<String>> {
     let path = hmgr::paths::version_cache_json();
     if !path.exists() {
         return Ok(None);
@@ -90,7 +109,7 @@ pub fn get_cached_version(identifier: &str) -> cu::Result<Option<String>> {
     Ok(map.get(identifier).cloned())
 }
 
-pub fn set_cached_version(identifier: &str, version: &str) -> cu::Result<()> {
+fn set_cached_version(identifier: &str, version: &str) -> cu::Result<()> {
     let path = hmgr::paths::version_cache_json();
     let mut map = if !path.exists() {
         BTreeMap::new()

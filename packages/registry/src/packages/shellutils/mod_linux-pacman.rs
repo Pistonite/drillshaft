@@ -7,7 +7,7 @@ register_binaries!(
     "perl", "gpg", "curl", "wget",
     "fzf", "jq",
     "bat", "dust", "fd", "websocat", "zoxide", "c", "ci",
-    "viopen", "vibash", "n"
+    "viopen", "vibash", "vihosts", "n"
 );
 
 mod perl;
@@ -95,6 +95,7 @@ pub fn uninstall(ctx: &Context) -> cu::Result<()> {
     epkg::cargo::uninstall("websocat")?;
     epkg::cargo::uninstall("zoxide")?;
     epkg::cargo::uninstall("viopen")?;
+    epkg::cargo::uninstall("n")?;
     Ok(())
 }
 
@@ -116,6 +117,10 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
                 home.into_utf8()?
             ]))?;
         }
+        ctx.add_item(hmgr::Item::ShimBin("vihosts".to_string(), vec![
+            cu::which("viopen")?.into_utf8()?,
+            "/etc/hosts".to_string()
+        ]))?;
 
         hmgr::set_cached_version("shellutils-alias", metadata::shellutils::ALIAS_VERSION)?;
     }

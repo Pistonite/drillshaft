@@ -7,6 +7,9 @@ publish = false
 
 [workspace]
 
+[dependencies]
+shell-words = "1.1.1"
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console"] }
 
@@ -17,7 +20,7 @@ libc = "0.2.180"
 serde = "1"
 [build-dependencies.cu]
 package = "pistonite-cu"
-version = "0.7.0"
+version = "0.7.2"
 features = ["fs", "json"]
 
 [lib]

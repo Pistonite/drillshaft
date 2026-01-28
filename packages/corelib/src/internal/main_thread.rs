@@ -40,6 +40,7 @@ macro_rules! main_thread_singleton {
                     unsafe{&*(&raw const INSTANCE)}.is_some()
                 };
                 if !initialized {
+                    #[allow(clippy::redundant_closure_call)]
                     let init_value: cu::Result<$type> = (|| { $init })();
                     let init_value = init_value?;
                     {

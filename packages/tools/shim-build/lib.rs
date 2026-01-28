@@ -1,5 +1,7 @@
+use std::env::ArgsOs;
 use std::ffi::OsStr;
 use std::path::Path;
+use std::process::{Command, ExitCode};
 
 #[inline(always)]
 pub fn exe_name(s: &OsStr) -> &[u8] {
@@ -7,6 +9,22 @@ pub fn exe_name(s: &OsStr) -> &[u8] {
         Some(name) => name.as_encoded_bytes(),
         None => &[]
     }
+}
+
+pub fn exec_bash_replace(cfg_args: &[&str], cli_args: ArgsOs) -> ExitCode {
+    // the library we use only supports utf8
+    let mut cli_args_utf8 = Vec::with_capacity(cli_args.len());
+    for a in cli_args {
+        let Some(a) = a.to_str() else {
+            eprintln!("non utf-8 argument: {}", a.display());
+            return ExitCode::FAILURE;
+        };
+        cli_args_utf8.push(a.to_string());
+    }
+    let script = shell_words::join(cfg_args.iter().copied().chain(cli_args_utf8.iter().map(|x| x.as_str())));
+    let mut cmd = Command::new("bash.exe");
+    cmd.args(["-c", &script]);
+    exec_replace(cmd)
 }
 
 pub use imp::exec_replace;

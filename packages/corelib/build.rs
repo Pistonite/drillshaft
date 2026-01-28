@@ -41,7 +41,7 @@ fn make_tools_targz() -> cu::Result<()> {
         let rel_path = entry_path.try_to_rel_from(&tools_path);
         cu::ensure!(rel_path.is_relative(), "'{}'", rel_path.display())?;
         let mut file = cu::check!(
-            File::open(&entry_path),
+            File::open(entry_path),
             "failed to open '{}'",
             entry_path.display()
         )?;

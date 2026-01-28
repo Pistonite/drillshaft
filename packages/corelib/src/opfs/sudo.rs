@@ -68,7 +68,7 @@ pub fn sudo_path(path: &Path, reason: &str) -> cu::Result<cu::Command<(), (), ()
         .file_name()
         .and_then(|x| x.to_str())
         .unwrap_or_default();
-    sudo_path_name(&path, name, reason)
+    sudo_path_name(path, name, reason)
 }
 
 fn sudo_path_name(path: &Path, name: &str, reason: &str) -> cu::Result<cu::Command<(), (), ()>> {

@@ -46,7 +46,9 @@ pub(crate) mod pre {
     };
     #[cfg(target_os = "linux")]
     pub(crate) use crate::{check_installed_pacman_package, check_installed_with_pacman};
-    pub(crate) use corelib::{Version, bin_name, command_output, epkg, hmgr, if_arm, jsexe, opfs};
+    pub(crate) use corelib::{
+        Version, VersionCache, bin_name, command_output, epkg, hmgr, if_arm, jsexe, opfs,
+    };
     pub(crate) use cu::pre::*;
     pub(crate) use enumset::{EnumSet, enum_set};
     pub(crate) use std::path::{Path, PathBuf};

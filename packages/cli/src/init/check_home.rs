@@ -116,7 +116,7 @@ to see why the auto-mount fails.
     }
 
     hmgr::add_env_assert([("SHAFT_HOME".to_string(), home_str.to_string())])?;
-    hmgr::require_envchange_reinvocation(false)
+    hmgr::require_envchange_reinvocation()
 }
 
 fn prompt_user_input_for_home(default_home: &Path) -> cu::Result<PathBuf> {

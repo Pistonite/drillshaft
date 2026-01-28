@@ -112,7 +112,7 @@ pub fn file_sha256(path: &Path, bar: Option<Arc<cu::ProgressBar>>) -> cu::Result
     use std::os::windows::fs::MetadataExt;
 
     let mut hasher = Sha256::new();
-    let mut reader = cu::fs::reader(&path)?;
+    let mut reader = cu::fs::reader(path)?;
 
     let metadata = path.metadata()?;
     #[cfg(unix)]
@@ -154,25 +154,67 @@ pub fn file_sha256(path: &Path, bar: Option<Arc<cu::ProgressBar>>) -> cu::Result
 
 /// Extract an archive with 7z. Requires the 7z binary to exist. out_dir will be created.
 #[inline(always)]
-pub fn un7z(archive_path: impl AsRef<Path>, out_dir: impl AsRef<Path>) -> cu::Result<()> {
-    un7z_impl(archive_path.as_ref(), out_dir.as_ref())
+pub fn un7z(
+    archive_path: impl AsRef<Path>,
+    out_dir: impl AsRef<Path>,
+    bar: Option<&Arc<cu::ProgressBar>>,
+) -> cu::Result<()> {
+    un7z_impl(archive_path.as_ref(), out_dir.as_ref(), bar)
 }
 
+#[cfg(windows)]
 #[cu::context("failed to extract zip: '{}'", archive_path.display())]
-fn un7z_impl(archive_path: &Path, out_dir: &Path) -> cu::Result<()> {
+fn un7z_impl(
+    archive_path: &Path,
+    out_dir: &Path,
+    bar: Option<&Arc<cu::ProgressBar>>,
+) -> cu::Result<()> {
     let script = format!(
         "& {} x -y {} -o{}",
         quote_path(cu::which("7z")?)?,
         quote_path(archive_path)?,
         quote_path(out_dir)?
     );
+    let file_name = archive_path.file_name_str().unwrap_or("file");
     // 7z will create the out dir if not exist, so we don't need to check
-    cu::which("powershell")?
+    let (child, bar, _) = cu::which("powershell")?
         .command()
         .args(["-NoLogo", "-NoProfile", "-c", &script])
-        .stdoe(cu::lv::D)
+        .stdoe(
+            cu::pio::spinner(format!("extracting {file_name}"))
+                .configure_spinner(|builder| builder.parent(bar.cloned())),
+        )
         .stdin_null()
-        .wait_nz()?;
+        .spawn()?;
+    child.wait_nz()?;
+    bar.done();
+    Ok(())
+}
+
+#[cfg(not(windows))]
+#[cu::context("failed to extract zip: '{}'", archive_path.display())]
+fn un7z_impl(
+    archive_path: &Path,
+    out_dir: &Path,
+    bar: Option<&Arc<cu::ProgressBar>>,
+) -> cu::Result<()> {
+    let file_name = archive_path.file_name_str().unwrap_or("file");
+    let (child, bar, _) = cu::which("7z")?
+        .command()
+        .args([
+            "x",
+            "-y",
+            archive_path.as_utf8()?,
+            &format!("-o{}", quote_path(out_dir)),
+        ])
+        .stdoe(
+            cu::pio::spinner(format!("extracting {file_name}"))
+                .configure_spinner(|builder| builder.parent(bar.cloned())),
+        )
+        .stdin_null()
+        .spawn()?;
+    child.wait_nz()?;
+    bar.done();
     Ok(())
 }
 
@@ -211,5 +253,5 @@ fn find_in_wingit_impl(path: &Path) -> cu::Result<PathBuf> {
         mingw64_path = git_path.join("mingw64");
     }
     cu::trace!("found mingw64: '{}'", mingw64_path.display());
-    Ok(git_path.join(path).normalize_executable()?)
+    git_path.join(path).normalize_executable()
 }

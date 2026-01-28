@@ -77,14 +77,16 @@ impl ItemMgr {
         bar: Option<&Arc<cu::ProgressBar>>,
     ) -> cu::Result<()> {
         let mut bin_to_remove = vec![];
-        let mut _env_to_remove = vec![];
+        let mut _env_to_remove = BTreeMap::new();
         let mut _path_to_remove = BTreeSet::new();
         self.items.retain(|entry| {
             if entry.package != package {
                 return true;
             }
             match &entry.item {
-                Item::UserEnvVar(k, _) => _env_to_remove.push(k.to_string()),
+                Item::UserEnvVar(k, v) => {
+                    _env_to_remove.insert(k.to_string(), v.to_string());
+                }
                 Item::UserPath(path) => {
                     _path_to_remove.insert(path.to_string());
                 }
@@ -115,9 +117,15 @@ impl ItemMgr {
 
         #[cfg(windows)]
         {
-            todo!(); // env to remove need to check if the existing value
-            // is the expected  value
-            for key in _env_to_remove {
+            for (key, value) in _env_to_remove {
+                if let Ok(current_value) = hmgr::windows::get_user(&key) {
+                    if current_value != value {
+                        cu::warn!(
+                            "removing user env var '{key}', but the current value is not expected; skipping"
+                        );
+                        continue;
+                    }
+                }
                 hmgr::windows::set_user(&key, "")?;
             }
             let path = hmgr::windows::get_user("PATH")?;
@@ -170,7 +178,7 @@ impl ItemMgr {
         cu::fs::write_json_pretty(config_path, &self.items)?;
 
         if !self.skip_reinvocation && self.reinvocation_needed {
-            hmgr::require_envchange_reinvocation(true)?;
+            hmgr::require_envchange_reinvocation()?;
         }
 
         self.dirty = false;
@@ -183,17 +191,27 @@ impl ItemMgr {
         let envs = self.build_env_map()?;
         let mut reinvocation_needed = false;
         for (key, value) in &envs {
-            if let Ok(current) = hmgr::windows::get_user(&key) {
-                if &current == value {
-                    continue;
+            if !reinvocation_needed {
+                if let Ok(current) = hmgr::windows::get_user_this_session(key) {
+                    if &current != value {
+                        reinvocation_needed = true;
+                        cu::debug!(
+                            "itemmgr: reinvocation because of env: '{key}': '{current}'->'{value}'"
+                        );
+                    }
+                } else {
+                    cu::debug!(
+                        "itemmgr: reinvocation because of env: '{key}': setting new value: '{value}'"
+                    );
+                    reinvocation_needed = true;
                 }
             }
-            reinvocation_needed = true;
-            hmgr::windows::set_user(&key, &value)?;
+            hmgr::windows::set_user(key, value)?;
         }
-        let (path, set_path_needed) = self.build_user_path()?;
-        if set_path_needed {
-            hmgr::windows::set_user("PATH", &path)?;
+        let (path, path_changed) = self.build_user_path()?;
+        hmgr::windows::set_user("PATH", &path)?;
+        if path_changed {
+            cu::debug!("itemmgr: reinvocation because of path: setting path");
             reinvocation_needed = true;
         }
         if reinvocation_needed {
@@ -373,6 +391,7 @@ impl ItemMgr {
             };
             controlled_paths.push(p);
             if !current_paths.contains(p) {
+                cu::debug!("itemmgr: reinvocation because of path: adding '{p}'");
                 reinvocation_needed = true;
             }
         }
@@ -423,6 +442,9 @@ impl ItemMgr {
                     // we want to make sure the current path we are getting
                     // is from the User env var, so it's persistent
                     if !current_paths.contains(p) {
+                        cu::debug!(
+                            "itemmgr: reinvocation because of path: '{p}' was not from user env"
+                        );
                         reinvocation_needed = true;
                     }
                 }
@@ -437,7 +459,7 @@ impl ItemMgr {
                     let _ = write!(out, ";{p}");
                 }
             }
-            if out != path {
+            if out != hmgr::windows::get_user_this_session("PATH")? {
                 reinvocation_needed = true;
             }
         }

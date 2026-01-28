@@ -20,7 +20,7 @@ static CLIENT: LazyLock<Result<Client, String>> = LazyLock::new(|| {
 fn client() -> cu::Result<&'static Client> {
     let client: &Result<Client, String> = &CLIENT;
     match client {
-        Ok(c) => return Ok(c),
+        Ok(c) => Ok(c),
         Err(e) => {
             cu::bail!("error initializing https client: {e}")
         }

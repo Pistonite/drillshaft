@@ -2,7 +2,7 @@ use std::cell::{RefCell, RefMut};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use corelib::hmgr::{self, Item, ItemMgr};
+use corelib::hmgr::{self, Item, ItemMgr, VersionCache};
 use cu::pre::*;
 use enumset::EnumSet;
 
@@ -108,6 +108,12 @@ impl Context {
             "failed to move install dir to install-old"
         )?;
         Ok(())
+    }
+    pub fn needs_configure(&self, vc: VersionCache) -> bool {
+        if !self.is_installed(self.pkg) {
+            return true;
+        }
+        !matches!(vc.is_uptodate(), Ok(true))
     }
     pub fn set_installed(&mut self, pkg: PkgId, installed: bool) {
         if installed {
