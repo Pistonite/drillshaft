@@ -1,12 +1,15 @@
-//! GNU Coreutils, Diffutils, and other basic commands
+//! GNU Coreutils, Diffutils, and other basic commands for common workflows
 
 use crate::pre::*;
 
 mod eza;
 
-static ALIAS_VERSION: VersionCache = VersionCache::new("coreutils-alias", metadata::coreutils::ALIAS_VERSION);
+static ALIAS_VERSION: VersionCache =
+    VersionCache::new("coreutils-alias", metadata::coreutils::ALIAS_VERSION);
 
-register_binaries!("ls", "diff", "gzip", "sed", "grep");
+register_binaries!(
+    "ls", "diff", "find", "gzip", "sed", "grep", "zip", "unzip", "tar"
+);
 
 pub fn binary_dependencies() -> EnumSet<BinId> {
     enum_set! { BinId::Git | BinId::CargoBinstall }
@@ -17,9 +20,17 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     check_bin_in_path_and_shaft!("diff");
     check_bin_in_path_and_shaft!("diff3");
     check_bin_in_path_and_shaft!("cmp");
+    // not checking in shaft because Windows has System32/find.exe
+    check_bin_in_path!("find");
     check_bin_in_path_and_shaft!("gzip");
     check_bin_in_path_and_shaft!("sed");
     check_bin_in_path_and_shaft!("grep");
+    check_bin_in_path_and_shaft!("zip");
+    check_bin_in_path_and_shaft!("unzip");
+    cu::check!(
+        cu::which("tar"),
+        "tar.exe is bundled in Windows; your Windows version might be too low"
+    )?;
     let which_info = check_installed_with_cargo!("which");
     if Version(&which_info.version) < metadata::shellutils::which::VERSION {
         return Ok(Verified::NotUpToDate);
@@ -34,7 +45,12 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
 pub fn install(ctx: &Context) -> cu::Result<()> {
     eza::install(ctx)?;
     epkg::cargo::binstall("coreutils", ctx.bar_ref())?;
-    epkg::cargo::install_git_commit("which", metadata::shellutils::REPO, metadata::shellutils::COMMIT, ctx.bar_ref())?;
+    epkg::cargo::install_git_commit(
+        "which",
+        metadata::shellutils::REPO,
+        metadata::shellutils::COMMIT,
+        ctx.bar_ref(),
+    )?;
     Ok(())
 }
 
@@ -56,70 +72,87 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     cu::fs::copy(&coreutils_src, &coreutils_path)?;
     let coreutils_path = coreutils_path.into_utf8()?;
 
-    if ctx.needs_configure(ALIAS_VERSION) {
-        let list_output = command_output!("coreutils", ["--list"]);
-        let utils: Vec<_> = list_output.lines()
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty() && s.chars().all(|c| c.is_alphanumeric()))
-            .collect();
-        {
-            let bar = cu::progress("configuring coreutils")
-                .total(utils.len())
-                .parent(ctx.bar())
-                .spawn();
-            let has_pwsh = ctx.is_installed(PkgId::Pwsh);
+    let list_output = command_output!("coreutils", ["--list"]);
+    let utils: Vec<_> = list_output
+        .lines()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty() && s.chars().all(|c| c.is_alphanumeric()))
+        .collect();
+    {
+        let bar = cu::progress("configuring coreutils")
+            .total(utils.len())
+            .parent(ctx.bar())
+            .spawn();
+        let has_pwsh = ctx.is_installed(PkgId::Pwsh);
 
-            // Run shell checks in parallel with pool of 4
-            cu::co::run(async move {
-                let pool = cu::co::pool(4);
-                let mut handles = Vec::with_capacity(utils.len());
-                for util in &utils {
-                    let util = util.to_string();
-                    let handle = pool.spawn(async move {
-                        let is_alias = shell_has_alias("powershell", &util).await?
+        // Run shell checks in parallel with pool of 4
+        cu::co::run(async move {
+            let pool = cu::co::pool(4);
+            let mut handles = Vec::with_capacity(utils.len());
+            for util in &utils {
+                let util = util.to_string();
+                let handle = pool.spawn(async move {
+                    let is_alias = shell_has_alias("powershell", &util).await?
                         || (has_pwsh && shell_has_alias("pwsh", &util).await?);
-                        let is_binary = shell_has_binary("powershell", &util).await?
+                    let is_binary = shell_has_binary("powershell", &util).await?
                         || (has_pwsh && shell_has_binary("pwsh", &util).await?);
-                        cu::Ok((util, is_alias, is_binary))
-                    });
-                    handles.push(handle);
-                }
+                    cu::Ok((util, is_alias, is_binary))
+                });
+                handles.push(handle);
+            }
 
-                let mut set = cu::co::set(handles);
-                while let Some(result) = set.next().await {
-                    let (util, is_alias, is_binary) = result??;
-                    cu::progress!(bar += 1, "{util}");
-                    let link_path = hmgr::paths::binary(bin_name!(&util)).into_utf8()?;
-                    if is_alias {
-                        cu::info!("removing powershell alias: {util}");
-                        ctx.add_item(hmgr::Item::Pwsh(format!("Remove-Item Alias:{util} -Force")))?;
-                    }
-                    if is_binary {
-                        cu::info!("overriding powershell command: {util}");
-                        ctx.add_item(hmgr::Item::Pwsh(format!("Set-Alias -Name {util} -Value '{link_path}'")))?;
-                    }
-                    ctx.add_item(hmgr::Item::LinkBin(link_path, coreutils_path.clone()))?;
+            let mut set = cu::co::set(handles);
+            while let Some(result) = set.next().await {
+                let (util, is_alias, is_binary) = result??;
+                cu::progress!(bar += 1, "{util}");
+                let link_path = hmgr::paths::binary(bin_name!(&util)).into_utf8()?;
+                if is_alias {
+                    cu::info!("removing powershell alias: {util}");
+                    ctx.add_item(hmgr::Item::Pwsh(format!("Remove-Item Alias:{util} -Force")))?;
                 }
-                cu::Ok(())
-            })?;
-        }
-        // configure utils from mingw
-        let exe_path = opfs::find_in_wingit("usr/bin/grep.exe")?;
-        ctx.add_item(hmgr::Item::ShimBin(
-            bin_name!("grep").to_string(),
-            vec![exe_path.into_utf8()?, "--color=auto".to_string()],
-        ))?;
-        const MINGW_UTILS: &[&str] = &["diff", "diff3", "cmp", "gzip", "sed"];
-        for util in MINGW_UTILS {
-            let exe_path = opfs::find_in_wingit(format!("usr/bin/{util}.exe"))?;
-            ctx.add_item(hmgr::Item::ShimBin(
-                bin_name!(util),
-                vec![exe_path.into_utf8()?],
-            ))?;
-        }
-
-        ALIAS_VERSION.update()?;
+                if is_binary {
+                    cu::info!("overriding powershell command: {util}");
+                    ctx.add_item(hmgr::Item::Pwsh(format!(
+                        "Set-Alias -Name {util} -Value '{link_path}'"
+                    )))?;
+                }
+                ctx.add_item(hmgr::Item::LinkBin(link_path, coreutils_path.clone()))?;
+            }
+            cu::Ok(())
+        })?;
     }
+    // configure utils from mingw
+    let exe_path = opfs::find_in_wingit("usr/bin/grep.exe")?;
+    ctx.add_item(hmgr::Item::ShimBin(
+        bin_name!("grep").to_string(),
+        vec![exe_path.into_utf8()?, "--color=auto".to_string()],
+    ))?;
+    const MINGW_UTILS: &[&str] = &["diff", "diff3", "cmp", "find", "gzip", "sed", "unzip"];
+    for util in MINGW_UTILS {
+        let exe_path = opfs::find_in_wingit(format!("usr/bin/{util}.exe"))?;
+        ctx.add_item(hmgr::Item::ShimBin(
+            bin_name!(util),
+            vec![exe_path.into_utf8()?],
+        ))?;
+    }
+    // find is not part of coreutils - replace System32\find.exe in PowerShell
+    let findutil_path = hmgr::paths::binary(bin_name!("find")).into_utf8()?;
+    ctx.add_item(hmgr::Item::Pwsh(format!(
+        "Set-Alias -Name find -Value '{findutil_path}'"
+    )))?;
+
+    // unpack zip for windows. note that GnuWin for unzip is outdated, so we are using
+    // the one from Git
+    let mut zip_path = hmgr::paths::tools_root();
+    zip_path.extend(["__windows__", "zip", "zip.exe"]);
+    hmgr::tools::ensure_unpacked()?;
+    // using shim bin because of dll deps
+    ctx.add_item(hmgr::Item::ShimBin(
+        bin_name!("zip").to_string(),
+        vec![zip_path.into_utf8()?],
+    ))?;
+
+    ALIAS_VERSION.update()?;
 
     Ok(())
 }
@@ -132,7 +165,8 @@ async fn shell_has_alias(shell: &str, util: &str) -> cu::Result<bool> {
         .command()
         .args(["-NoLogo", "-NoProfile", "-c", &script])
         .all_null()
-        .co_wait().await
+        .co_wait()
+        .await
         .map(|s| s.success())
 }
 
@@ -145,6 +179,7 @@ async fn shell_has_binary(shell: &str, util: &str) -> cu::Result<bool> {
         .command()
         .args(["-NoLogo", "-NoProfile", "-c", &script])
         .all_null()
-        .co_wait().await
+        .co_wait()
+        .await
         .map(|s| s.success())
 }

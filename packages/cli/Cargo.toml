@@ -1,6 +1,6 @@
 [package]
 name = "shaft-cli"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 publish = false
 
@@ -19,7 +19,7 @@ clap = { version = "4", features = ["cargo"] }
 registry = { package = "shaft-registry", path = "../registry" }
 enumset.workspace = true
 enum-map.workspace = true
-viopen = { version = "0.1.2", git = "https://github.com/Pistonite/shellutils", branch = "main", features = ["print"] }
+viopen.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55.0"

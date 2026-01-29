@@ -7,8 +7,7 @@ mod version;
 pub use version::*;
 mod download;
 pub use download::*;
-mod tools;
-pub use tools::*;
+pub mod tools;
 
 mod item;
 pub use item::{Item, ItemMgr};

@@ -13,4 +13,3 @@ pub fn verify(min_version: &str) -> cu::Result<Verified> {
     }
     cu::bail!("failed to get git version from output: {stdout}");
 }
-

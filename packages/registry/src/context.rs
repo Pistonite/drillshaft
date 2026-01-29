@@ -6,7 +6,7 @@ use corelib::hmgr::{self, Item, ItemMgr, VersionCache};
 use cu::pre::*;
 use enumset::EnumSet;
 
-use crate::PkgId;
+use crate::{PkgId, Verified};
 
 /// Context passed to package functions
 pub struct Context {
@@ -108,12 +108,6 @@ impl Context {
             "failed to move install dir to install-old"
         )?;
         Ok(())
-    }
-    pub fn needs_configure(&self, vc: VersionCache) -> bool {
-        if !self.is_installed(self.pkg) {
-            return true;
-        }
-        !matches!(vc.is_uptodate(), Ok(true))
     }
     pub fn set_installed(&mut self, pkg: PkgId, installed: bool) {
         if installed {

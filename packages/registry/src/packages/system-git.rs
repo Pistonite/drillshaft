@@ -1,4 +1,3 @@
-
 //! Use `git` binary found on the system PATH. The version is NOT checked.
 
 use cu::pre::*;
@@ -13,7 +12,10 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {
-    cu::check!(verify(ctx), "system-git requires 'git' to be installed on the system")?;
+    cu::check!(
+        verify(ctx),
+        "system-git requires 'git' to be installed on the system"
+    )?;
     Ok(())
 }
 

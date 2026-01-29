@@ -15,7 +15,9 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     check_bin_in_path!("bash");
     let version = command_output!("git", ["--version"]);
     if !version.contains("vfs") {
-        cu::bail!("current 'git' is not the vfs version (microsoft.git); please uninstall it or use the 'system-git' package");
+        cu::bail!(
+            "current 'git' is not the vfs version (microsoft.git); please uninstall it or use the 'system-git' package"
+        );
     }
     check_bin_in_path!("scalar");
     let v = version::verify(metadata::git::VERSION)?;
@@ -41,13 +43,11 @@ pub fn uninstall(ctx: &Context) -> cu::Result<()> {
 }
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
-    if ctx.needs_configure(ALIAS_VERSION) {
-        let exe_path = opfs::find_in_wingit("bin/bash.exe")?;
-        ctx.add_item(hmgr::Item::ShimBin(
-            bin_name!("bash").to_string(),
-            vec![exe_path.into_utf8()?],
-        ))?;
-        ALIAS_VERSION.update()?;
-    }
+    let exe_path = opfs::find_in_wingit("bin/bash.exe")?;
+    ctx.add_item(hmgr::Item::ShimBin(
+        bin_name!("bash").to_string(),
+        vec![exe_path.into_utf8()?],
+    ))?;
+    ALIAS_VERSION.update()?;
     Ok(())
 }

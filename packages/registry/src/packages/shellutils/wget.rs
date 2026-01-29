@@ -13,7 +13,9 @@ pub fn version_check() -> cu::Result<Verified> {
         let Some(version) = rest.split_whitespace().next() else {
             continue;
         };
-        return Ok(Verified::is_uptodate(!(Version(version) < metadata::wget::VERSION)));
+        return Ok(Verified::is_uptodate(
+            !(Version(version) < metadata::wget::VERSION),
+        ));
     }
     cu::bail!("failed to get wget version from output: {stdout}");
 }

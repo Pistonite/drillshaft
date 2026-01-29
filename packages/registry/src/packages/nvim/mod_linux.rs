@@ -18,13 +18,16 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
         Err(_) => return Ok(Verified::NotInstalled),
         Ok(path) => {
             if path != bin_dir.join("nvim") {
-                cu::bail!("binary 'nvim' is installed outside of this tool, please uninstall it first.");
+                cu::bail!(
+                    "binary 'nvim' is installed outside of this tool, please uninstall it first."
+                );
             }
             path
         }
     };
-    let (child, stdout) = binary.command()
-    .arg("--version")
+    let (child, stdout) = binary
+        .command()
+        .arg("--version")
         .stdout(cu::pio::string())
         .stdie_null()
         .spawn()?;
@@ -36,9 +39,9 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
         return Ok(Verified::NotUpToDate);
     };
     if Version(version) >= VERSION {
-       return Ok(Verified::UpToDate);
+        return Ok(Verified::UpToDate);
     }
-    
+
     Ok(Verified::NotUpToDate)
 }
 

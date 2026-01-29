@@ -14,6 +14,8 @@ pub fn config_location(_: &Context) -> cu::Result<Option<PathBuf>> {
 }
 
 pub fn pre_uninstall(_: &Context) -> cu::Result<()> {
-    cu::hint!("core is a pseudo package to check requirements of the tool itself, and cannot be uninstalled.");
+    cu::hint!(
+        "core is a pseudo package to check requirements of the tool itself, and cannot be uninstalled."
+    );
     cu::bail!("cannot uninstall core");
 }

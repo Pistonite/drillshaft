@@ -29,7 +29,15 @@ pub fn verify(ctx: &Context) -> cu::Result<Verified> {
             }
         }
     }
-    let version = command_output!("pwsh", ["-NoLogo", "-NoProfile", "-c", "$PSVersionTable.PSVersion.ToString()"]);
+    let version = command_output!(
+        "pwsh",
+        [
+            "-NoLogo",
+            "-NoProfile",
+            "-c",
+            "$PSVersionTable.PSVersion.ToString()"
+        ]
+    );
     let is_preview = version.contains("preview");
     let is_uptodate = !(Version(version.trim()) < metadata::pwsh::VERSION);
     Ok(Verified::is_uptodate(is_preview && is_uptodate))
@@ -53,13 +61,13 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
     let pwsh_exe = ctx.install_dir().join("pwsh.exe");
-    ctx.add_item(hmgr::Item::ShimBin("pwsh.exe".to_string(), 
-        vec![
-            pwsh_exe.as_utf8()?.to_string()
-        ]
+    ctx.add_item(hmgr::Item::ShimBin(
+        "pwsh.exe".to_string(),
+        vec![pwsh_exe.as_utf8()?.to_string()],
     ))?;
     // get ps7 profile location
-    let (child, stdout) = pwsh_exe.command()
+    let (child, stdout) = pwsh_exe
+        .command()
         .args(["-NoLogo", "-NoProfile", "-c", "$Profile.AllUsersAllHosts"])
         .stdout(cu::pio::string())
         .stderr(cu::lv::E)
@@ -70,14 +78,24 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     let mut edit_profile_path = ps7_profile_path.clone();
     let config = ctx.load_config_file_or_default(include_str!("config.toml"))?;
     if let Some(toml::Value::String(ps5_profile)) = config.get("use-ps5-profile") {
-        if !matches!(ps5_profile.as_str(),
-            "AllUsersAllHosts" | "AllUsersCurrentHost"
-            | "CurrentUserAllHosts" | "CurrentUserCurrentHost") {
+        if !matches!(
+            ps5_profile.as_str(),
+            "AllUsersAllHosts"
+                | "AllUsersCurrentHost"
+                | "CurrentUserAllHosts"
+                | "CurrentUserCurrentHost"
+        ) {
             cu::bail!("invalid powershell profile name: {ps5_profile}");
         }
         // get ps5 profile location
-        let (child, stdout) = cu::which("powershell.exe")?.command()
-            .args(["-NoLogo", "-NoProfile", "-c", &format!("$Profile.{ps5_profile}")])
+        let (child, stdout) = cu::which("powershell.exe")?
+            .command()
+            .args([
+                "-NoLogo",
+                "-NoProfile",
+                "-c",
+                &format!("$Profile.{ps5_profile}"),
+            ])
             .stdout(cu::pio::string())
             .stderr(cu::lv::E)
             .stdin_null()
@@ -91,10 +109,13 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     }
 
     if ctx.is_installed(PkgId::Shellutils) {
-            ctx.add_item(hmgr::Item::ShimBin(bin_name!("vipwsh").to_string(), vec![
+        ctx.add_item(hmgr::Item::ShimBin(
+            bin_name!("vipwsh").to_string(),
+            vec![
                 cu::which("viopen")?.into_utf8()?,
-                edit_profile_path.into_utf8()?
-            ]))?;
+                edit_profile_path.into_utf8()?,
+            ],
+        ))?;
     }
     Ok(())
 }

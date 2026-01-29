@@ -23,4 +23,3 @@ pub fn uninstall(ctx: &Context) -> cu::Result<()> {
     epkg::pacman::uninstall("git", ctx.bar_ref())?;
     Ok(())
 }
-

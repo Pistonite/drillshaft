@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use cu::pre::*;
 use flate2::Compression;
 use flate2::write::GzEncoder;
-use ignore::Walk;
+use ignore::WalkBuilder;
 use tar::{Builder as TarBuilder, HeaderMode};
 
 fn main() -> cu::Result<()> {
@@ -32,7 +32,15 @@ fn make_tools_targz() -> cu::Result<()> {
         path
     };
 
-    for entry in Walk::new(&tools_path) {
+    let mut builder = WalkBuilder::new(&tools_path);
+    builder.filter_entry(|entry| {
+        if entry.file_type().is_none_or(|x| !x.is_dir()) {
+            return true;
+        }
+        cfg!(windows) || entry.file_name() != "__windows__"
+    });
+
+    for entry in builder.build() {
         let entry = entry?;
         let entry_path = entry.path();
         if !entry_path.is_file() {

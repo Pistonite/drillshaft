@@ -402,7 +402,7 @@ impl ItemMgr {
         {
             use std::fmt::Write as _;
             // on non-Windows, simply append to existing $PATH in the shell
-            let _ = write!(out, "$SHAFT_HOME:$SHAFT_HOME/bin");
+            let _ = write!(out, "$SHAFT_HOME/bin");
             // latest added path go to the front
             for p in controlled_paths.iter().rev() {
                 let p = p.trim();
@@ -424,11 +424,9 @@ impl ItemMgr {
             let current_paths: BTreeSet<_> =
                 path.split(';').map(|x| x.trim().to_string()).collect();
             // To be safe, we will expand %SHAFT_HOME% on windows
-            let home = hmgr::paths::home().as_utf8()?;
             let home_bin = hmgr::paths::bin_root();
             let home_bin_str = home_bin.as_utf8()?;
-            let _ = write!(out, "{};{}", home, home_bin_str);
-            seen.insert(home);
+            out.push_str(home_bin_str);
             seen.insert(home_bin_str);
             // add the new ones
             // latest added path go to the front

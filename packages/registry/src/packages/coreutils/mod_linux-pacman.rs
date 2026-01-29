@@ -4,18 +4,38 @@ use crate::pre::*;
 
 mod eza;
 
-register_binaries!("ls", "diff", "gzip", "sed", "grep");
+register_binaries!(
+    "ls", "diff", "find", "gzip", "sed", "grep", "zip", "unzip", "tar"
+);
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
     eza::verify()?;
     check_installed_pacman_package!("base");
+
+    let v = check_installed_pacman_package!("zip");
+    if Version(&v) < metadata::coreutils::zip::VERSION {
+        return Ok(Verified::NotUpToDate);
+    }
+    let v = check_installed_pacman_package!("unzip");
+    if Version(&v) < metadata::coreutils::unzip::VERSION {
+        return Ok(Verified::NotUpToDate);
+    }
+    let v = check_installed_pacman_package!("tar");
+    if Version(&v) < metadata::coreutils::tar::VERSION {
+        return Ok(Verified::NotUpToDate);
+    }
     let alias_version = hmgr::get_cached_version("coreutils-alias")?;
-    Ok(Verified::is_uptodate(alias_version.as_deref() == Some(metadata::coreutils::ALIAS_VERSION)))
+    Ok(Verified::is_uptodate(
+        alias_version.as_deref() == Some(metadata::coreutils::ALIAS_VERSION),
+    ))
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {
     eza::install(ctx)?;
     epkg::pacman::install("base", ctx.bar_ref())?;
+    epkg::pacman::install("zip", ctx.bar_ref())?;
+    epkg::pacman::install("unzip", ctx.bar_ref())?;
+    epkg::pacman::install("tar", ctx.bar_ref())?;
     Ok(())
 }
 

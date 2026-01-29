@@ -21,6 +21,15 @@ const METADATA_TOML = path.join(SCRIPT_DIR, "metadata.toml");
 const TEMP_DIR = path.join(SCRIPT_DIR, "update-metadata-temp");
 const GITHUB_API = "https://api.github.com/";
 const CRATESIO_API = "https://crates.io/api/v1/";
+const ARCHLINUX_API = "https://archlinux.org/packages/search/json/";
+
+// === CONSTANT HELPERS ======================================================
+const cfg_windows = (x: string) => `'cfg(windows)'.${x}`;
+const cfg_windows_arm64 = (x: string) => `'cfg(all(windows,target_arch="aarch64"))'.${x}`;
+const cfg_windows_x64 = (x: string) => `'cfg(all(windows,target_arch="x86_64"))'.${x}`;
+const cfg_arm64 = (x: string) => `'cfg(target_arch="aarch64")'.${x}`;
+const cfg_x64 = (x: string) => `'cfg(target_arch="x86_64")'.${x}`;
+const cfg_linux = (x: string) => `'cfg(target_os="linux")'.${x}`;
 
 // === CLI ===================================================================
 const main = async () => {
@@ -100,7 +109,7 @@ const fetch_by_package = async (meta: string[], pkg: string): Promise<PackageEnt
     console.log(`fetching '${pkg}'...`);
     /** Fetch the latest version of a package, returns an object */
     switch (pkg) {
-        case "pwsh":
+        case "_7z": {
             return await fetch_from_github_release({
                 repo: get_metadata(meta, pkg, "REPO"),
                 tag: (tags) => {
@@ -108,9 +117,7 @@ const fetch_by_package = async (meta: string[], pkg: string): Promise<PackageEnt
                     throw new Error("failed to find pwsh preview release");
                 },
                 query: async (repo, tag, artifacts) => {
-                    if (tag[0] === 'v') {
-                        tag = tag.substring(1);
-                    }
+                    tag = strip_v(tag);
                     const arm64_zip = `PowerShell-${tag}-win-arm64.zip`; if (!artifacts.includes(arm64_zip)) { throw new Error("failed to find pwsh arm64 artifact"); }
                     const x64_zip = `PowerShell-${tag}-win-x64.zip`; if (!artifacts.includes(x64_zip)) { throw new Error("failed to find pwsh x64 artifact"); }
                     const arm64_url = github_release_url(repo, 'v'+tag, arm64_zip);
@@ -120,30 +127,218 @@ const fetch_by_package = async (meta: string[], pkg: string): Promise<PackageEnt
 
                     return {
                         VERSION: tag,
-                        [`'cfg(target_arch="aarch64")'.SHA`]: arm64_hash,
-                        [`'cfg(target_arch="x86_64")'.SHA`]: x64_hash,
+                        [cfg_arm64("SHA")]: arm64_hash,
+                        [cfg_x64("SHA")]: x64_hash,
                     };
                 }
-            })
+            });
+        }
+        case "pwsh": 
+            return await fetch_from_github_release({
+                repo: get_metadata(meta, pkg, "REPO"),
+                tag: (tags) => {
+                    for (const tag of tags) { if (tag.includes("preview")) { return tag; } }
+                    throw new Error("failed to find pwsh preview release");
+                },
+                query: async (repo, tag, artifacts) => {
+                    tag = strip_v(tag);
+                    const arm64_zip = `PowerShell-${tag}-win-arm64.zip`; if (!artifacts.includes(arm64_zip)) { throw new Error("failed to find pwsh arm64 artifact"); }
+                    const x64_zip = `PowerShell-${tag}-win-x64.zip`; if (!artifacts.includes(x64_zip)) { throw new Error("failed to find pwsh x64 artifact"); }
+                    const arm64_url = github_release_url(repo, 'v'+tag, arm64_zip);
+                    const x64_url = github_release_url(repo, 'v'+tag, x64_zip);
+                    const arm64_hash = await sha256_from_url(arm64_url);
+                    const x64_hash = await sha256_from_url(x64_url);
+
+                    return {
+                        VERSION: tag,
+                        [cfg_arm64("SHA")]: arm64_hash,
+                        [cfg_x64("SHA")]: x64_hash,
+                    };
+                }
+            });
         case "cargo_binstall": return await fetch_from_cratesio({ crate: "cargo-binstall" });
         case "coreutils": {
             return {
                 ...await fetch_from_cratesio({ crate: "eza", query: (v) => ({ "eza.VERSION": v }) }),
-                ...await fetch_from_cratesio({ crate: "coreutils", query: (v) => ({ "uutils.VERSION": v }) })
+                ...await fetch_from_cratesio({ crate: "coreutils", query: (v) => ({ "uutils.VERSION": v }) }),
+                ...await fetch_from_arch_linux({
+                    package: "zip",
+                    query: async (version) => { return { "zip.VERSION": version } }
+                }),
+                ...await fetch_from_arch_linux({
+                    package: "unzip",
+                    query: async (version) => { return { "unzip.VERSION": version } }
+                }),
+                ...await fetch_from_arch_linux({
+                    package: "tar",
+                    query: async (version) => { return { "tar.VERSION": version } }
+                }),
             };
         }
-        case "shellutils":
-            // todo: grab version from specific Cargo.toml files on GitHub
-            return {};
+        case "shellutils": {
+            const repo = get_metadata(meta, pkg, "REPO");
+            const commit = await fetch_latest_commit(repo);
+            return {
+                REPO: repo,
+                COMMIT: commit,
+                ...await fetch_from_cargo_toml({
+                    repo, ref: commit, path: "packages/which/Cargo.toml",
+                    query: (v) => ({ "which.VERSION": v })
+                }),
+                ...await fetch_from_cargo_toml({
+                    repo, ref: commit, path: "packages/viopen/Cargo.toml",
+                    query: (v) => ({ "viopen.VERSION": v })
+                }),
+                ...await fetch_from_cargo_toml({
+                    repo, ref: commit, path: "packages/vipath/Cargo.toml",
+                    query: (v) => ({ "vipath.VERSION": v })
+                }),
+                ...await fetch_from_cargo_toml({
+                    repo, ref: commit, path: "packages/n/Cargo.toml",
+                    query: (v) => ({ "n.VERSION": v })
+                }),
+                ...await fetch_from_cargo_toml({
+                    repo, ref: commit, path: "packages/wsclip/Cargo.toml",
+                    query: (v) => ({ "wsclip.VERSION": v })
+                }),
+            }
+        }
+        case "git": {
+            return {
+                ...await fetch_from_github_release({
+                    repo: "https://github.com/microsoft/git",
+                    query: async (_, tag) => {
+                        tag = strip_v(tag);
+                        const i = tag.indexOf(".vfs");
+                        if (i===-1) { throw new Error("latest microsoft/git is not vfs"); }
+                        return { [cfg_windows("VERSION")]: tag.substring(0, i) }
+                    }
+                }),
+                ...await fetch_from_arch_linux({
+                    package: "git",
+                    query: async (version) => { return { [cfg_linux("VERSION")]: version } }
+                }),
+            }
+        }
         case "perl":
-            // todo: grab version from arch linux package registry
-            return {};
-
+            return await fetch_from_arch_linux({
+                package: "perl",
+                query: async (version) => { return { [cfg_linux("VERSION")]: version } }
+            });
+        case "curl":
+            return await fetch_from_arch_linux({
+                package: "curl",
+                query: async (version) => { return { [cfg_linux("VERSION")]: version } }
+            });
+        case "wget": {
+            return {
+                ...await fetch_from_arch_linux({
+                    package: "wget",
+                    query: async (version) => { return { [cfg_linux("VERSION")]: version } }
+                }),
+                ...await fetch_from_github_release({
+                    repo: get_metadata(meta, pkg, `'cfg(windows)'.REPO`),
+                    query: async (repo, tag, artifacts) => {
+                        const artifact = artifacts.find(x => x.startsWith("wget-ucrt64-xp-openssl-lite"));
+                        if (!artifact) { throw new Error("could not find wget artifact for windows"); }
+                        const vparts = tag.split('.');
+                        if (vparts.length < 3) { throw new Error("invalid wget tag format: "+tag); }
+                        const version = strip_v(vparts[0] + "." + vparts[1] + "." + vparts[2]);
+                        const url = github_release_url(repo, tag, artifact);
+                        const sha = await sha256_from_url(url);
+                        return {
+                            [cfg_windows("VERSION")]: version,
+                            [cfg_windows("URL")]: url,
+                            [cfg_windows("SHA")]: sha,
+                        };
+                    }
+                })
+            };
+        }
+        case "fzf": {
+            return await fetch_from_github_release({
+                repo: get_metadata(meta, pkg, "REPO"),
+                query: async (repo, tag, artifacts) => {
+                    tag = strip_v(tag);
+                    const arm64_zip = `fzf-${tag}-windows_arm64.zip`; if (!artifacts.includes(arm64_zip)) { throw new Error("failed to find fzf arm64 artifact"); }
+                    const x64_zip = `fzf-${tag}-windows_amd64.zip`; if (!artifacts.includes(x64_zip)) { throw new Error("failed to find fzf x64 artifact"); }
+                    const arm64_url = github_release_url(repo, 'v'+tag, arm64_zip);
+                    const x64_url = github_release_url(repo, 'v'+tag, x64_zip);
+                    const arm64_hash = await sha256_from_url(arm64_url);
+                    const x64_hash = await sha256_from_url(x64_url);
+                    return {
+                        VERSION: tag,
+                        [cfg_windows_arm64("SHA")]: arm64_hash,
+                        [cfg_windows_x64("SHA")]: x64_hash,
+                    };
+                }
+            });
+        }
+        case "jq": {
+            return await fetch_from_github_release({
+                repo: get_metadata(meta, pkg, "REPO"),
+                query: async (repo, tag, artifacts) => {
+                    if (!tag.startsWith("jq-")) { throw new Error("invalid jq tag format: "+tag); }
+                    const artifact = "jq-windows-amd64.exe"; if (!artifacts.includes(artifact)) { throw new Error("failed to find jq artifact"); }
+                    const url = github_release_url(repo, tag, artifact);
+                    const sha = await sha256_from_url(url);
+                    return {
+                        VERSION: tag.substring(3),
+                        [cfg_windows("SHA")]: sha,
+                    };
+                }
+            });
+        }
+        case "task": {
+            return await fetch_from_github_release({
+                repo: get_metadata(meta, pkg, "REPO"),
+                query: async (repo, tag, artifacts) => {
+                    tag = strip_v(tag);
+                    const artifact_arm64 = "task_windows_arm64.zip"; if (!artifacts.includes(artifact_arm64)) { throw new Error("failed to find task arm64 artifact"); }
+                    const artifact_x64 = "task_windows_amd64.zip"; if (!artifacts.includes(artifact_x64)) { throw new Error("failed to find task x64 artifact"); }
+                    const artifact_linux = "task_linux_amd64.tar.gz"; if (!artifacts.includes(artifact_linux)) { throw new Error("failed to find task linux artifact"); }
+                    const url_arm64 = github_release_url(repo, 'v'+tag, artifact_arm64);
+                    const url_x64 = github_release_url(repo, 'v'+tag, artifact_x64);
+                    const url_linux = github_release_url(repo, 'v'+tag, artifact_linux);
+                    const sha_arm64 = await sha256_from_url(url_arm64);
+                    const sha_x64 = await sha256_from_url(url_x64);
+                    const sha_linux = await sha256_from_url(url_linux);
+                    return {
+                        VERSION: tag,
+                        [cfg_windows_arm64("SHA")]: sha_arm64,
+                        [cfg_windows_x64("SHA")]: sha_x64,
+                        [cfg_linux("SHA")]: sha_linux,
+                    };
+                }
+            });
+        }
         case "bat": return await fetch_from_cratesio({ crate: "bat" });
         case "dust": return await fetch_from_cratesio({ crate: "du-dust" });
         case "fd": return await fetch_from_cratesio({ crate: "fd-find" });
         case "websocat": return await fetch_from_cratesio({ crate: "websocat" });
         case "zoxide": return await fetch_from_cratesio({ crate: "zoxide" });
+        case "hack_font": {
+            return {
+                ...await fetch_from_arch_linux({
+                    package: "ttf-hack-nerd",
+                    query: (ver,rel) => ({VERSION_PACMAN:`${ver}-${rel}`})
+                }),
+                ...await fetch_from_github_release({
+                    repo: get_metadata(meta, pkg, "REPO"),
+                    query: async (repo, tag, artifacts) => {
+                        tag = strip_v(tag);
+                        const artifact = "Hack.zip";
+                        if (!artifacts.includes(artifact)) { throw new Error("failed to find Hack.zip"); }
+                        const url = github_release_url(repo, 'v'+tag, artifact);
+                        const sha = await sha256_from_url(url);
+                        return {
+                            VERSION: tag,
+                            SHA: sha,
+                        };
+                    }
+                }),
+            }
+        }
 
         default:
             console.log(`WARNING: unknown package '${pkg}'`);
@@ -156,19 +351,17 @@ const fetch_by_package = async (meta: string[], pkg: string): Promise<PackageEnt
 type GithubReleaseArgs = {
     repo: string;
     tag?: (tags: string[]) => string;
-    query: (repo: string, tag: string, artifacts: string[]) => Promise<PackageEntry>;
+    query: (repo: string, tag: string, artifacts: string[]) => Promise<PackageEntry> | PackageEntry;
 };
+type GithubTagsResponse = { name: string }[];
+type GithubReleaseResponse = { tag_name: string; assets: { name: string }[] };
+type GithubRepoResponse = { default_branch: string };
+type GithubBranchResponse = { commit: { sha: string } };
 
 /** Fetch package updates from GitHub releases */
 const fetch_from_github_release = async ({ repo, tag: tag_picker, query }: GithubReleaseArgs): Promise<PackageEntry> => {
     console.log(`fetching from github repo: ${repo}`);
-
-    // extract owner/repo from URL
-    const repo_match = repo.match(/github\.com\/([^/]+\/[^/]+)/);
-    if (!repo_match) {
-        throw new Error(`invalid github repo url: ${repo}`);
-    }
-    const repo_path = repo_match[1].replace(/\.git$/, "");
+    const repo_path = parse_github_repo(repo);
 
     let selected_tag: string;
 
@@ -178,7 +371,7 @@ const fetch_from_github_release = async ({ repo, tag: tag_picker, query }: Githu
         if (!tags_response.ok) {
             throw new Error(`failed to fetch tags for ${repo_path}: ${tags_response.status}`);
         }
-        const tags_data = await tags_response.json() as { name: string }[];
+        const tags_data = await tags_response.json() as GithubTagsResponse;
         const tags = tags_data.map(t => t.name);
         if (tags.length === 0) {
             throw new Error(`no tags found for ${repo_path}`);
@@ -190,7 +383,7 @@ const fetch_from_github_release = async ({ repo, tag: tag_picker, query }: Githu
         if (!release_response.ok) {
             throw new Error(`failed to fetch latest release for ${repo_path}: ${release_response.status}`);
         }
-        const release_data = await release_response.json() as { tag_name: string };
+        const release_data = await release_response.json() as GithubReleaseResponse;
         selected_tag = release_data.tag_name;
     }
     console.log(`fetching release '${selected_tag}' from ${repo}`);
@@ -200,7 +393,7 @@ const fetch_from_github_release = async ({ repo, tag: tag_picker, query }: Githu
     if (!release_response.ok) {
         throw new Error(`failed to fetch release ${selected_tag} for ${repo_path}: ${release_response.status}`);
     }
-    const release_data = await release_response.json() as { assets: { name: string }[] };
+    const release_data = await release_response.json() as GithubReleaseResponse;
     const artifacts = release_data.assets.map(a => a.name);
 
     return await query(repo, selected_tag, artifacts);
@@ -211,30 +404,134 @@ const github_release_url = (repo: string, tag: string, artifact: string): string
     return `${repo}/releases/download/${tag}/${artifact}`;
 };
 
-type CratesIoArgs = {
-    crate: string;
-    query?: (version: string) => Promise<PackageEntry> | PackageEntry;
+/** Fetch the latest commit hash of the default branch */
+const fetch_latest_commit = async (repo: string): Promise<string> => {
+    const repo_path = parse_github_repo(repo);
+    console.log(`fetching latest commit for ${repo_path}`);
+    // get repo info to find default branch
+    const repo_response = await fetch(`${GITHUB_API}repos/${repo_path}`);
+    if (!repo_response.ok) {
+        throw new Error(`failed to fetch repo info for ${repo_path}: ${repo_response.status}`);
+    }
+    const repo_data = await repo_response.json() as GithubRepoResponse;
+    const default_branch = repo_data.default_branch;
+    // get the latest commit on the default branch
+    const branch_response = await fetch(`${GITHUB_API}repos/${repo_path}/branches/${default_branch}`);
+    if (!branch_response.ok) {
+        throw new Error(`failed to fetch branch ${default_branch} for ${repo_path}: ${branch_response.status}`);
+    }
+    const branch_data = await branch_response.json() as GithubBranchResponse;
+    const commit = branch_data.commit.sha;
+    console.log(`latest commit of ${repo_path} on ${default_branch}: ${commit}`);
+    return commit;
 };
 
-/** Fetch package updates from crates.io */
-const fetch_from_cratesio = async ({ crate, query }: CratesIoArgs): Promise<PackageEntry> => {
+type GithubCargoTomlArgs = {
+    repo: string;
+    ref: string;
+    path: string;
+    query?: (version: string) => Promise<PackageEntry> | PackageEntry;
+};
+/** Fetch package version from a Cargo.toml file on GitHub */
+const fetch_from_cargo_toml = async ({ repo, ref, path, query }: GithubCargoTomlArgs): Promise<PackageEntry> => {
     query = query || ((VERSION) => ({ VERSION }));
-    console.log(`fetching from crates.io: ${crate}`);
+    console.log(`fetching Cargo.toml from ${repo} @ ${ref}: ${path}`);
+    const repo_path = parse_github_repo(repo);
 
-    const response = await fetch(`${CRATESIO_API}crates/${crate}`, {
-        headers: { "User-Agent": "shaft-registry-updater" }
-    });
+    // fetch raw file content
+    const raw_url = `https://raw.githubusercontent.com/${repo_path}/${ref}/${path}`;
+    const response = await fetch(raw_url);
     if (!response.ok) {
-        throw new Error(`failed to fetch crate ${crate}: ${response.status}`);
+        throw new Error(`failed to fetch ${raw_url}: ${response.status}`);
     }
-    const data = await response.json() as { crate: { newest_version: string } };
-    const version = data.crate.newest_version;
-    console.log(`latest version of ${crate}: ${version}`);
+    const content = await response.text();
+
+    // parse package.version from Cargo.toml
+    const version = parse_cargo_version(content);
+    console.log(`parsed version from ${path}: ${version}`);
 
     return await query(version);
 };
 
+/** Parse the package.version from Cargo.toml content */
+const parse_cargo_version = (content: string): string => {
+    const lines = content.split("\n");
+    let in_package_section = false;
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+
+        // check for section headers
+        if (trimmed.startsWith("[")) {
+            in_package_section = trimmed === "[package]";
+            continue;
+        }
+
+        // look for version key in [package] section
+        if (in_package_section && trimmed.startsWith("version")) {
+            const match = trimmed.match(/^version\s*=\s*(.+)$/);
+            if (match) {
+                return from_toml_string(match[1].trim());
+            }
+        }
+    }
+
+    throw new Error("failed to find package.version in Cargo.toml");
+};
+
+type CratesIoArgs = {
+    crate: string;
+    query?: (version: string) => Promise<PackageEntry> | PackageEntry;
+};
+type CratesIoResponse = { crate: { newest_version: string } };
+/** Fetch package updates from crates.io */
+const fetch_from_cratesio = async ({ crate, query }: CratesIoArgs): Promise<PackageEntry> => {
+    query = query || ((VERSION) => ({ VERSION }));
+    console.log(`fetching from crates.io: ${crate}`);
+    const response = await fetch(`${CRATESIO_API}crates/${crate}`, {
+        headers: { "User-Agent": "shaft-registry-updater" } // crates.io requires UA
+    });
+    if (!response.ok) { throw new Error(`failed to fetch crate ${crate}: ${response.status}`); }
+    const data = await response.json() as CratesIoResponse;
+    const version = data.crate.newest_version;
+    console.log(`latest version of ${crate}: ${version}`);
+    return await query(version);
+};
+
+type ArchLinuxArgs = {
+    package: string;
+    query: (pkgver: string, pkgrel: string) => Promise<PackageEntry> | PackageEntry;
+};
+type ArchLinuxResponse = { results: { pkgname: string; pkgver: string; pkgrel: string }[] };
+/** Fetch package version from Arch Linux official repositories */
+const fetch_from_arch_linux = async ({ package: pkg, query }: ArchLinuxArgs): Promise<PackageEntry> => {
+    console.log(`fetching from arch linux: ${pkg}`);
+    const response = await fetch(`${ARCHLINUX_API}?name=${encodeURIComponent(pkg)}`);
+    if (!response.ok) { throw new Error(`failed to fetch arch linux package ${pkg}: ${response.status}`); }
+    const data = await response.json() as ArchLinuxResponse;
+    const match = data.results.find(r => r.pkgname === pkg);
+    if (!match) { throw new Error(`arch linux package not found: ${pkg}`); }
+    const pkgver = match.pkgver;
+    const pkgrel = match.pkgrel;
+    console.log(`latest version of ${pkg} on arch linux: ${pkgver}-${pkgrel}`);
+    return await query(pkgver, pkgrel);
+};
+
 // === CORE HELPERS ==========================================================
+
+/** Extract owner/repo path from a GitHub URL */
+const parse_github_repo = (repo: string): string => {
+    const match = repo.match(/github\.com\/([^/]+\/[^/]+)/);
+    if (!match) {
+        throw new Error(`invalid github repo url: ${repo}`);
+    }
+    return match[1].replace(/\.git$/, "");
+};
+
+/** Strip leading 'v' from a version tag */
+const strip_v = (version: string): string => {
+    return version[0]==="v" ? version.substring(1) : version;
+};
 
 /** Download a file and compute its SHA256 hash */
 const sha256_from_url = async (url: string): Promise<string> => {

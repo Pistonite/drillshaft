@@ -1,4 +1,5 @@
 [_7z]
+REPO = "https://github.com/ip7z/7zip"
 VERSION = "25.01"
 'cfg(target_arch="aarch64")'.SHA = "6365c7c44e217b9c1009e065daf9f9aa37454e64315b4aaa263f7f8f060755dc"
 'cfg(target_arch="x86_64")'.SHA = "78afa2a1c773caf3cf7edf62f857d2a8a5da55fb0fff5da416074c0d28b2b55f"
@@ -14,27 +15,29 @@ VERSION = "7.6.0-preview.6"
 VERSION = "1.17.4"
 
 [coreutils]
-ALIAS_VERSION = "2"
+ALIAS_VERSION = "6"
 eza.VERSION = "0.23.4"
 uutils.VERSION = "0.5.0"
+zip.VERSION = "3.0"
+unzip.VERSION = "6.0"
+tar.VERSION = "1.35"
 
 [shellutils]
 ALIAS_VERSION = "4"
 REPO = "https://github.com/Pistonite/shellutils"
-COMMIT = "adcda5952d62c758573a9cf9fdf3671b0260ecb4"
-which.VERSION = "0.1.2"
-viopen.VERSION = "0.1.2"
-vipath.VERSION = "0.1.4"
+COMMIT = "331ee9d19e26ed82ca42b31513a042381ca8db3a"
+which.VERSION = "0.1.3"
+viopen.VERSION = "0.1.3"
+vipath.VERSION = "0.1.5"
 n.VERSION = "0.1.1"
-wsclip.VERSION = "0.1.4"
+wsclip.VERSION = "0.1.5"
 
 [git]
-'cfg(windows)'.VERSION = "2.52.0.vfs"
 'cfg(windows)'.ALIAS_VERSION = "1"
+'cfg(windows)'.VERSION = "2.52.0"
 'cfg(target_os="linux")'.VERSION = "2.52.0"
 
 [perl]
-'cfg(windows)'.VERSION = "5.38.2"
 'cfg(target_os="linux")'.VERSION = "5.42.0"
 
 [curl]
@@ -43,20 +46,28 @@ wsclip.VERSION = "0.1.4"
 
 [wget]
 'cfg(target_os="linux")'.VERSION = "1.25.0"
+'cfg(windows)'.REPO = "https://github.com/lifenjoiner/wget-for-windows"
 'cfg(windows)'.VERSION = "1.25.0"
 'cfg(windows)'.URL = "https://github.com/lifenjoiner/wget-for-windows/releases/download/v1.25.0.230-a13d0/wget-ucrt64-xp-openssl-lite_v1.25.0.230-a13d0_e2f4498e19fa63184014e3b9d2f071bbc1c6217b.7z"
 'cfg(windows)'.SHA = "fd60911ec2d94857e55e574521e8cb247ff852b58a34348a829f7cd98a2530e7"
 
 [fzf]
-'cfg(target_os="linux")'.VERSION = "0.67.0"
-'cfg(windows)'.VERSION = "0.67.0"
+REPO = "https://github.com/junegunn/fzf"
+VERSION = "0.67.0"
 'cfg(all(windows,target_arch="aarch64"))'.SHA = "4a39934cc8f670048a7fb21dde09096adcbda7adc676010dd9cec90780d3b9df"
 'cfg(all(windows,target_arch="x86_64"))'.SHA = "cad95326ed416d14226a03425513b049f5bc9a41f30a355e5fe204a29e666867"
 
 [jq]
-'cfg(target_os="linux")'.VERSION = "1.8.1"
-'cfg(windows)'.VERSION = "1.8.1"
+REPO = "https://github.com/jqlang/jq"
+VERSION = "1.8.1"
 'cfg(windows)'.SHA = "23cb60a1354eed6bcc8d9b9735e8c7b388cd1fdcb75726b93bc299ef22dd9334"
+
+[task]
+REPO = "https://github.com/go-task/task"
+VERSION = "3.48.0"
+'cfg(all(windows,target_arch="aarch64"))'.SHA = "10409f9401bcac6a0b5a7928d0216f1818140ba4b685509694fdd4b580fa0f97"
+'cfg(all(windows,target_arch="x86_64"))'.SHA = "d6dd072d8b1c8131626cacd96af5edbc54470c437f747ec87f3fab32a15b3c74"
+'cfg(target_os="linux")'.SHA = "f4bfc4eef1b2557b262f3cc0a79976a421885cb7b9e71cfe75568a2ebe4d7ae5"
 
 [bat]
 VERSION = "0.26.1"
@@ -74,8 +85,9 @@ VERSION = "1.14.1"
 VERSION = "0.9.8"
 
 [hack_font]
-VERSION = "v3.4.0"
-VERSION_PACMAN = "3.4.0-1"
+REPO = "https://github.com/ryanoasis/nerd-fonts"
+VERSION_PACMAN = "3.4.0-2"
+VERSION = "3.4.0"
 SHA = "8ca33a60c791392d872b80d26c42f2bfa914a480f9eb2d7516d9f84373c36897"
 
 [terminal]

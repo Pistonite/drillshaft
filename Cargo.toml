@@ -10,7 +10,7 @@ members = [
 
 [workspace.dependencies.cu]
 package = "pistonite-cu"
-version = "0.7.2"
+version = "0.7.3"
 # path = "../cu/packages/copper"
 
 [workspace.dependencies.pm]
@@ -22,6 +22,16 @@ default-features = false
 [workspace.dependencies.corelib]
 package = "shaft-corelib"
 path = "./packages/corelib"
+
+[workspace.dependencies.win-envedit]
+version = "0.1.4"
+git = "https://github.com/Pistonite/shellutils"
+branch = "main"
+
+[workspace.dependencies.viopen]
+version = "0.1.3"
+git = "https://github.com/Pistonite/shellutils"
+branch = "main"
 
 [workspace.dependencies]
 enum-map = "2.7.3"

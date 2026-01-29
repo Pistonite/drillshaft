@@ -16,7 +16,12 @@ pub fn verify(ctx: &Context) -> cu::Result<Verified> {
     version::check(metadata::_7z::VERSION)
 }
 pub fn download(ctx: &Context) -> cu::Result<()> {
-    hmgr::download_file("7z-installer.exe", download_url(), metadata::_7z::SHA, ctx.bar())?;
+    hmgr::download_file(
+        "7z-installer.exe",
+        download_url(),
+        metadata::_7z::SHA,
+        ctx.bar(),
+    )?;
     Ok(())
 }
 pub fn install(ctx: &Context) -> cu::Result<()> {
@@ -28,7 +33,11 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
     // https://7-zip.org/faq.html
     // /S is silent, /D specify install dir
     let install_dir = ctx.install_dir();
-    let script = format!("{} /S /D={}", installer.as_utf8()?, opfs::quote_path(&install_dir)?);
+    let script = format!(
+        "{} /S /D={}",
+        installer.as_utf8()?,
+        opfs::quote_path(&install_dir)?
+    );
     opfs::sudo("powershell", "7z installer")?
         .args(["-NoLogo", "-NoProfile", "-c", &script])
         .stdoe(cu::lv::D)
@@ -43,12 +52,12 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     let exe_path = hmgr::paths::binary("7z.exe");
     let exefm_path = hmgr::paths::binary("7zfm.exe");
     ctx.add_item(hmgr::Item::LinkBin(
-        exe_path.into_utf8()?, 
-        install_dir.join("7z.exe").into_utf8()?
+        exe_path.into_utf8()?,
+        install_dir.join("7z.exe").into_utf8()?,
     ))?;
     ctx.add_item(hmgr::Item::LinkBin(
-        exefm_path.into_utf8()?, 
-        install_dir.join("7zFM.exe").into_utf8()?
+        exefm_path.into_utf8()?,
+        install_dir.join("7zFM.exe").into_utf8()?,
     ))?;
     Ok(())
 }
@@ -61,7 +70,7 @@ pub fn uninstall(ctx: &Context) -> cu::Result<()> {
         cu::bail!("cannot find 7zip uninstaller, please sync it first to repair the installation");
     }
     opfs::sudo_path(&uninstaller, "7z uninstaller")?
-    .args(["/S"]) // silent
+        .args(["/S"]) // silent
         .stdoe(cu::lv::D)
         .stdin_null()
         .wait_nz()?;
@@ -84,10 +93,11 @@ fn ensure_terminated() -> cu::Result<()> {
 }
 
 fn download_url() -> String {
+    let repo = metadata::_7z::VERSION;
     let arch = if_arm!("arm64", else "x64");
     let version = metadata::_7z::VERSION;
     let version_no_dot = version.replace(".", "");
-    format!("https://github.com/ip7z/7zip/releases/download/{version}/7z{version_no_dot}-{arch}.exe")
+    format!("{repo}/releases/download/{version}/7z{version_no_dot}-{arch}.exe")
 }
 
 fn uninstaller_path(ctx: &Context) -> PathBuf {
