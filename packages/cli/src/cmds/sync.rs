@@ -140,14 +140,18 @@ fn do_sync_package(
             }
         }
         _ => {
-            cu::hint!("verification failed after installation");
-            cu::hint!("this could happen if a package installer modified the environment variable");
-            if cfg!(windows) {
-                cu::hint!("please try restarting all terminal processes");
-            } else {
-                cu::hint!("please try restarting the shell session");
-            }
-            cu::bail!("verification failed after installation");
+            cu::hint!(r"verification failed after installation
+this could happen for one of the following reasons:
+- an external package installer modified the environment variable
+- an external package installer has an outdated registry/mirrors
+  - for example, run `update-mirrors` on arch linux
+- the shaft registry has an incorrect version of the package
+
+please try restarting all terminal processes and shell sessions,
+and update the registries/mirrors of external package managers
+such as pacman and cargo.
+");
+            cu::bail!("failed to verify '{pkg}' after installation");
         }
     }
     drop(backup_guard);

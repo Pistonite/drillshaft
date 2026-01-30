@@ -169,6 +169,14 @@ const fetch_by_package = async (meta: Metafile, pkg: string): Promise<MetaKeyVal
                     package: "which",
                     query: async (version) => { return { "which.VERSION": version } }
                 }),
+                ...await fetch_from_arch_linux({
+                    package: "bash",
+                    query: async (version) => { return { "bash.VERSION": version } }
+                }),
+                ...await fetch_from_arch_linux({
+                    package: "bash-completion",
+                    query: async (version) => { return { "bash_cmp.VERSION": version } }
+                }),
             };
         }
         case "shellutils": {
@@ -213,6 +221,10 @@ const fetch_by_package = async (meta: Metafile, pkg: string): Promise<MetaKeyVal
                 ...await fetch_from_arch_linux({
                     package: "git",
                     query: async (version) => { return { [cfg_linux("VERSION")]: version } }
+                }),
+                ...await fetch_from_cratesio({
+                    crate: "git-delta",
+                    query: async (version) => { return { "delta.VERSION": version } }
                 }),
             }
         }

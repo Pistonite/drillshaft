@@ -14,6 +14,14 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     eza::verify()?;
     check_bin_in_path_and_shaft!("update-mirrors");
     check_installed_pacman_package!("base");
+    let v = check_installed_pacman_package!("bash");
+    if Version(&v) < metadata::coreutils::bash::VERSION {
+        return Ok(Verified::NotUpToDate);
+    }
+    let v = check_installed_pacman_package!("bash-completion");
+    if Version(&v) < metadata::coreutils::bash_cmp::VERSION {
+        return Ok(Verified::NotUpToDate);
+    }
 
     let v = check_installed_pacman_package!("zip");
     if Version(&v) < metadata::coreutils::zip::VERSION {
@@ -41,6 +49,7 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
     cu::fs::write(update_mirrors_sh, include_bytes!("./pacman-update-mirrors.sh"))?;
 
     epkg::pacman::install("base", ctx.bar_ref())?;
+    epkg::pacman::install("bash-completion", ctx.bar_ref())?;
     epkg::pacman::install("which", ctx.bar_ref())?;
     epkg::pacman::install("zip", ctx.bar_ref())?;
     epkg::pacman::install("unzip", ctx.bar_ref())?;

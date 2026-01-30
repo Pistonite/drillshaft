@@ -22,6 +22,8 @@ zip.VERSION = "3.0"
 unzip.VERSION = "6.0"
 tar.VERSION = "1.35"
 which.VERSION = "2.23"
+bash.VERSION = "5.3.9"
+bash_cmp.VERSION = "2.17.0"
 
 [shellutils]
 ALIAS_VERSION = "4"
@@ -37,6 +39,8 @@ wsclip.VERSION = "0.1.5"
 'cfg(windows)'.ALIAS_VERSION = "1"
 'cfg(windows)'.VERSION = "2.52.0"
 'cfg(target_os="linux")'.VERSION = "2.52.0"
+delta.VERSION = "0.18.2"
+CFG_VERSION = "1"
 
 [perl]
 'cfg(target_os="linux")'.VERSION = "5.42.0"

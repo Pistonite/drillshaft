@@ -1,0 +1,9 @@
+# Whether to set core.editor to 'viopen', which picks editor automatically based on what's installed
+editor = true
+
+# Only affects Windows, setting core.autocrlf to 'true'
+# On other platforms, or when `false`, core.autocrlf will be set to false
+autocrlf = true
+
+# Configure git to use delta as diff
+delta = true
