@@ -21,6 +21,7 @@ uutils.VERSION = "0.5.0"
 zip.VERSION = "3.0"
 unzip.VERSION = "6.0"
 tar.VERSION = "1.35"
+which.VERSION = "2.23"
 
 [shellutils]
 ALIAS_VERSION = "4"

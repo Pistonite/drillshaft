@@ -10,13 +10,13 @@ tasks:
   install:
     - pnpm i @types/node --no-lockfile
 
-  update-metadata:
-    - node --experimental-strip-types update-metadata.mts {{.CLI_ARGS}}
+  update:
+    - node --experimental-strip-types update/main.mts {{.CLI_ARGS}}
 
   clean:
     - rm -f package.json package-lock.json pnpm-lock.yaml bun.lock
     - rm -rf node_modules
-    - rm -rf update-metadata-temp
+    - rm -rf update/temp
 
   check-rustfmt:
     - rustfmt --check -l $(find src/packages -name '*.rs') --edition 2024

@@ -3,6 +3,7 @@
 use crate::pre::*;
 
 mod eza;
+mod common;
 
 register_binaries!(
     "ls", "diff", "find", "gzip", "sed", "grep", "zip", "unzip", "tar"
@@ -24,10 +25,7 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     if Version(&v) < metadata::coreutils::tar::VERSION {
         return Ok(Verified::NotUpToDate);
     }
-    let alias_version = hmgr::get_cached_version("coreutils-alias")?;
-    Ok(Verified::is_uptodate(
-        alias_version.as_deref() == Some(metadata::coreutils::ALIAS_VERSION),
-    ))
+    Ok(Verified::is_uptodate(common::ALIAS_VERSION.is_uptodate()?))
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {
