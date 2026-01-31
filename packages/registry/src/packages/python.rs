@@ -4,7 +4,12 @@ use crate::pre::*;
 register_binaries!("uv", "uvx", "python");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path_and_shaft!("python");
+    if cfg!(windows) {
+        check_bin_in_path_and_shaft!("python");
+    } else {
+        // python is shipped with other OS
+        check_bin_in_path!("python");
+    }
     let v = check_installed_with_cargo!("uv");
     if Version(&v.version) < metadata::uv::VERSION {
         return Ok(Verified::NotUpToDate);
