@@ -57,8 +57,9 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
     let pwsh_exe = ctx.install_dir().join("pwsh.exe");
-    ctx.add_item(Item::shim_bin(bin_name!("pwsh"),
-        ShimCommand::target(pwsh_exe.as_utf8()?)
+    ctx.add_item(Item::shim_bin(
+        bin_name!("pwsh"),
+        ShimCommand::target(pwsh_exe.as_utf8()?),
     ))?;
     // get ps7 profile location
     let (child, stdout) = pwsh_exe
@@ -108,9 +109,8 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
             bin_name!("vipwsh"),
             ShimCommand::target_args(
                 cu::which("viopen")?.into_utf8()?,
-                [
-                edit_profile_path.into_utf8()?,
-            ]),
+                [edit_profile_path.into_utf8()?],
+            ),
         ))?;
     }
     Ok(())

@@ -80,7 +80,10 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
 
     ctx.add_item(Item::shim_bin(
         "update-mirrors",
-        ShimCommand::target_args(cu::which("bash")?.into_utf8()?, [update_mirrors_sh.into_utf8()?]),
+        ShimCommand::target_args(
+            cu::which("bash")?.into_utf8()?,
+            [update_mirrors_sh.into_utf8()?],
+        ),
     ))?;
 
     // using shell alias for UI-only differences

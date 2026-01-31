@@ -84,15 +84,10 @@ pub fn download(ctx: &Context) -> cu::Result<()> {
 pub fn install(ctx: &Context) -> cu::Result<()> {
     let install_dir = ctx.install_dir();
     cu::fs::make_dir(&install_dir)?;
+
     let task_tgz = hmgr::paths::download("task.tgz", task_url());
-    let temp_dir = hmgr::paths::temp_dir("task-tgz");
-    let temp_tgz = temp_dir.join("task.tgz");
-    let temp_tar = temp_dir.join("task.tar");
-    cu::fs::copy(&task_tgz, &temp_tgz)?;
-    opfs::un7z(temp_tgz, &temp_dir, ctx.bar_ref())?;
-    opfs::un7z(temp_tar, &temp_dir, ctx.bar_ref())?;
-    let task_exe = temp_dir.join(bin_name!("task"));
-    cu::fs::copy(task_exe, install_dir.join(bin_name!("task")))?;
+    opfs::unarchive(task_tgz, install_dir.join(bin_name!("task")), false)?;
+
     epkg::pacman::install("perl", ctx.bar_ref())?;
     epkg::pacman::install("curl", ctx.bar_ref())?;
     epkg::pacman::install("wget", ctx.bar_ref())?;
