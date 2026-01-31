@@ -1,0 +1,7 @@
+{
+    "lsa.exe": { "target": "eza", "args": ["-a"] },
+    "lsl.exe": { "target": "eza", "args": ["-l"] },
+    "foo.exe": { "target": "bar" },
+    "gpg.exe": { "target": "gpg", "bash": true },
+    "gcc.exe": { "target": "gcc", "paths": ["C:\\here", "D:\\wee", "E:\\go"] }
+}

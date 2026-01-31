@@ -44,9 +44,9 @@ pub fn uninstall(ctx: &Context) -> cu::Result<()> {
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
     let exe_path = opfs::find_in_wingit("bin/bash.exe")?;
-    ctx.add_item(hmgr::Item::ShimBin(
-        bin_name!("bash").to_string(),
-        vec![exe_path.into_utf8()?],
+    ctx.add_item(Item::shim_bin(
+        bin_name!("bash"),
+        ShimCommand::target(exe_path.into_utf8()?),
     ))?;
     ALIAS_VERSION.update()?;
     Ok(())

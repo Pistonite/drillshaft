@@ -69,7 +69,7 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
 
     // zap env var
     for (key, value) in env_map {
-        ctx.add_item(hmgr::Item::UserEnvVar(key, value))?;
+        ctx.add_item(Item::user_env_var(key, value))?;
     }
 
     Ok(())

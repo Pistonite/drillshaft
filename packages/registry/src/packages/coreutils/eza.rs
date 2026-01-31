@@ -21,9 +21,9 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     let eza_src = cu::which("eza")?;
     cu::fs::copy(&eza_src, &eza_path)?;
 
-    ctx.add_item(hmgr::Item::ShimBin(
-        bin_name!("ls").to_string(),
-        vec![eza_path.into_utf8()?],
+    ctx.add_item(Item::shim_bin(
+        bin_name!("ls"),
+        ShimCommand::target(eza_path.into_utf8()?),
     ))?;
     Ok(())
 }

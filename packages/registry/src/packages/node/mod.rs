@@ -7,10 +7,6 @@ register_binaries!("node", "volta", "pnpm", "yarn");
 pub static ALIAS_VERSION: VersionCache =
     VersionCache::new("node-alias", metadata::volta::ALIAS_VERSION);
 
-pub fn binary_dependencies() -> EnumSet<BinId> {
-    enum_set! { BinId::_7z }
-}
-
 pub fn verify(_: &Context) -> cu::Result<Verified> {
     check_bin_in_path_and_shaft!("volta");
     check_bin_in_path_and_shaft!("node");
@@ -36,19 +32,7 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
     opfs::ensure_terminated(bin_name!("yarn"))?;
     let install_dir = ctx.install_dir();
     let volta_archive = hmgr::paths::download(volta_file_name(), volta_url()?);
-    #[cfg(not(windows))]
-    {
-        let temp_volta_dir = hmgr::paths::temp_dir("volta-tar");
-        let temp_volta_tgz = temp_volta_dir.join("volta.tgz");
-        let temp_volta_tar = temp_volta_dir.join("volta.tar");
-        cu::fs::copy(&volta_archive, &temp_volta_tgz)?;
-        opfs::un7z(&temp_volta_tgz, &temp_volta_dir, ctx.bar_ref())?;
-        opfs::un7z(&temp_volta_tar, &install_dir, ctx.bar_ref())?;
-    }
-    #[cfg(windows)]
-    {
-        opfs::un7z(&volta_archive, &install_dir, ctx.bar_ref())?;
-    }
+    opfs::unarchive(&volta_archive, &install_dir, false)?;
     Ok(())
 }
 pub fn uninstall(_: &Context) -> cu::Result<()> {
@@ -67,33 +51,30 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     let volta_home = ctx.install_dir();
     let volta_home_str = volta_home.as_utf8()?;
     let volta_bin = volta_home.join(bin_name!("volta"));
-    ctx.add_item(hmgr::Item::UserEnvVar(
-        "VOLTA_HOME".to_string(),
-        volta_home_str.to_string(),
-    ))?;
-    ctx.add_item(hmgr::Item::UserPath(volta_home.join("bin").into_utf8()?))?;
-    ctx.add_item(hmgr::Item::LinkBin(
-        bin_name!("volta").to_string(),
+    ctx.add_item(Item::user_env_var("VOLTA_HOME", volta_home_str))?;
+    ctx.add_item(Item::user_path(volta_home.join("bin").into_utf8()?))?;
+    ctx.add_item(Item::link_bin(
+        bin_name!("volta"),
         volta_bin.clone().into_utf8()?,
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
-        bin_name!("volta-migrate").to_string(),
+    ctx.add_item(Item::link_bin(
+        bin_name!("volta-migrate"),
         volta_home.join(bin_name!("volta-migrate")).into_utf8()?,
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
-        bin_name!("node").to_string(),
+    ctx.add_item(Item::link_bin(
+        bin_name!("node"),
         volta_home.join(bin_name!("volta-shim")).into_utf8()?,
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
-        bin_name!("npm").to_string(),
+    ctx.add_item(Item::link_bin(
+        bin_name!("npm"),
         volta_home.join(bin_name!("volta-shim")).into_utf8()?,
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
-        bin_name!("pnpm").to_string(),
+    ctx.add_item(Item::link_bin(
+        bin_name!("pnpm"),
         volta_home.join(bin_name!("volta-shim")).into_utf8()?,
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
-        bin_name!("yarn").to_string(),
+    ctx.add_item(Item::link_bin(
+        bin_name!("yarn"),
         volta_home.join(bin_name!("volta-shim")).into_utf8()?,
     ))?;
 

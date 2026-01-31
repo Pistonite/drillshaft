@@ -1,6 +1,6 @@
 [package]
 name = "shaft-cli"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 publish = false
 
@@ -13,23 +13,16 @@ cu = { workspace = true, features = [
     "json",
     "toml",
 ] }
-corelib.workspace = true
+corelib = { package = "shaft-corelib", path = "../corelib" }
+registry = { package = "shaft-registry", path = "../registry" }
 serde = "1"
 clap = { version = "4", features = ["cargo"] }
-registry = { package = "shaft-registry", path = "../registry" }
 enumset.workspace = true
 enum-map.workspace = true
 viopen.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55.0"
-
-[build-dependencies]
-cu = { workspace = true, features = [
-    "fs"
-] }
-flate2 = "1.1.8"
-tar = "0.4.44"
 
 [[bin]]
 name = "shaft"

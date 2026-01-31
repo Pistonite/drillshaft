@@ -1,0 +1,18 @@
+[package]
+name = "shaftim-build"
+version = "0.0.0"
+description = "library for building a wrapper binary for executing a command"
+edition = "2024"
+publish = false
+
+[dependencies]
+serde = "1"
+cu = { workspace = true, features = [ "json"] }
+pm = { workspace = true, optional = true }
+
+[features]
+default = ["build"]
+build = ["dep:pm", "pm/full", "cu/fs"]
+
+[lib]
+path = "lib.rs"

@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{Cursor, Read};
 use std::path::Path;
 #[cfg(windows)]
 use std::path::PathBuf;
@@ -6,6 +6,9 @@ use std::sync::Arc;
 
 use cu::pre::*;
 use sha2::{Digest, Sha256};
+use flate2::read::GzDecoder;
+use tar::Archive as TarArchive;
+use zip::ZipArchive;
 
 #[cfg(windows)]
 use crate::opfs;
@@ -83,6 +86,14 @@ pub fn safe_remove_link(path: &Path) -> cu::Result<()> {
     if !path.exists() {
         return Ok(());
     }
+    // it's faster to remove directly, but it might fail
+    // if the executable is currently running.
+    // However, PowerShell can still remove it as long as 
+    // the actual inode is not removed (the last copy of the hard link)
+    let Err(e) = cu::fs::remove(path) else {
+        return Ok(())
+    };
+    cu::debug!("failed to remove link: {e}, falling back to use powershell");
     // remove with powershell
     cu::which("powershell")?
         .command()
@@ -153,69 +164,101 @@ pub fn file_sha256(path: &Path, bar: Option<Arc<cu::ProgressBar>>) -> cu::Result
     Ok(out)
 }
 
-/// Extract an archive with 7z. Requires the 7z binary to exist. out_dir will be created.
+/// Extract an archive.
+///
+/// Supports `.tar.gz`, `.tgz` and `.zip`
 #[inline(always)]
-pub fn un7z(
+pub fn unarchive(
     archive_path: impl AsRef<Path>,
     out_dir: impl AsRef<Path>,
-    bar: Option<&Arc<cu::ProgressBar>>,
+    clean: bool,
 ) -> cu::Result<()> {
-    un7z_impl(archive_path.as_ref(), out_dir.as_ref(), bar)
+    unarchive_impl(archive_path.as_ref(), out_dir.as_ref(), clean)
 }
-
-#[cfg(windows)]
-#[cu::context("failed to extract zip: '{}'", archive_path.display())]
-fn un7z_impl(
+fn unarchive_impl(
     archive_path: &Path,
     out_dir: &Path,
-    bar: Option<&Arc<cu::ProgressBar>>,
+    clean: bool,
 ) -> cu::Result<()> {
-    let script = format!(
-        "& {} x -y {} -o{}",
-        quote_path(cu::which("7z")?)?,
-        quote_path(archive_path)?,
-        quote_path(out_dir)?
-    );
-    let file_name = archive_path.file_name_str().unwrap_or("file");
-    // 7z will create the out dir if not exist, so we don't need to check
-    let (child, bar, _) = cu::which("powershell")?
-        .command()
-        .args(["-NoLogo", "-NoProfile", "-c", &script])
-        .stdoe(
-            cu::pio::spinner(format!("extracting {file_name}"))
-                .configure_spinner(|builder| builder.parent(bar.cloned())),
-        )
-        .stdin_null()
-        .spawn()?;
-    child.wait_nz()?;
-    bar.done();
+    let ext = cu::check!(archive_path.extension(), "missing archive extension: '{}'", archive_path.display())?;
+    let ext = ext.to_ascii_lowercase();
+    let ext = cu::check!(ext.into_utf8(), "unknown archive extension")?;
+    enum Format {
+        Tar,
+        TarGz,
+        Zip
+    }
+    let format = match ext.as_bytes() {
+        b"gz" => {
+            let mut path = archive_path.to_path_buf();
+            path.set_extension("");
+            let ext = cu::check!(archive_path.extension(), "only .tar.gz is supported with .gz files")?;
+            let ext = ext.to_ascii_lowercase();
+            if ext != "tar" {
+                cu::bail!("only .tar.gz is supported for .gz files");
+            }
+            Format::TarGz
+        }
+        b"tgz" => Format::TarGz,
+        b"tar" => Format::Tar,
+        b"zip" => Format::Zip,
+        _ => {
+            cu::bail!("unknown archive extension: {ext}")
+        }
+    };
+    let archive_bytes = cu::fs::read(archive_path)?;
+    match format {
+        Format::TarGz => {
+            untargz_bytes(&archive_bytes, out_dir, clean)?;
+        }
+        Format::Tar => {
+            untar_bytes(&archive_bytes, out_dir, clean)?;
+        }
+        Format::Zip => {
+        }
+    } 
     Ok(())
 }
 
-#[cfg(not(windows))]
-#[cu::context("failed to extract zip: '{}'", archive_path.display())]
-fn un7z_impl(
-    archive_path: &Path,
+#[cu::context("failed to unpack targz bytes")]
+pub fn untargz_bytes(
+    archive_bytes: &[u8],
     out_dir: &Path,
-    bar: Option<&Arc<cu::ProgressBar>>,
+    clean: bool,
 ) -> cu::Result<()> {
-    let file_name = archive_path.file_name_str().unwrap_or("file");
-    let (child, bar, _) = cu::which("7z")?
-        .command()
-        .args([
-            "x",
-            "-y",
-            archive_path.as_utf8()?,
-            &format!("-o{}", out_dir.as_utf8()?),
-        ])
-        .stdoe(
-            cu::pio::spinner(format!("extracting {file_name}"))
-                .configure_spinner(|builder| builder.parent(bar.cloned())),
-        )
-        .stdin_null()
-        .spawn()?;
-    child.wait_nz()?;
-    bar.done();
+    if clean {
+        cu::fs::make_dir_empty(&out_dir)?;
+    }
+    let mut archive = TarArchive::new(GzDecoder::new(archive_bytes));
+    archive.unpack(&out_dir)?;
+    Ok(())
+}
+
+#[cu::context("failed to unpack tar bytes")]
+pub fn untar_bytes(
+    archive_bytes: &[u8],
+    out_dir: &Path,
+    clean: bool,
+) -> cu::Result<()> {
+    if clean {
+        cu::fs::make_dir_empty(&out_dir)?;
+    }
+    let mut archive = TarArchive::new(archive_bytes);
+    archive.unpack(&out_dir)?;
+    Ok(())
+}
+
+#[cu::context("failed to unpack zip bytes")]
+pub fn unzip_bytes(
+    archive_bytes: &[u8],
+    out_dir: &Path,
+    clean: bool,
+) -> cu::Result<()> {
+    if clean {
+        cu::fs::make_dir_empty(&out_dir)?;
+    }
+    let mut archive = ZipArchive::new(Cursor::new(archive_bytes))?;
+    archive.extract_unwrapped_root_dir(out_dir, zip::read::root_dir_common_filter)?;
     Ok(())
 }
 

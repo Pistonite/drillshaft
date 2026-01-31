@@ -16,7 +16,7 @@ mod common;
 mod wget;
 
 pub fn binary_dependencies() -> EnumSet<BinId> {
-    enum_set! { BinId::Scalar | BinId::_7z }
+    enum_set! { BinId::Scalar }
 }
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
@@ -109,16 +109,20 @@ pub fn download(ctx: &Context) -> cu::Result<()> {
 pub fn install(ctx: &Context) -> cu::Result<()> {
     let install_dir = ctx.install_dir();
     cu::fs::make_dir(&install_dir)?;
+
     let wget_7z = hmgr::paths::download("wget.7z", metadata::wget::URL);
-    opfs::un7z(wget_7z, &install_dir, ctx.bar_ref())?;
+    opfs::unarchive(wget_7z, &install_dir, false)?;
+
     let fzf_zip = hmgr::paths::download("fzf.zip", fzf_url());
-    opfs::un7z(fzf_zip, &install_dir, ctx.bar_ref())?;
+    opfs::unarchive(fzf_zip, &install_dir, false)?;
+
     let jq_exe = hmgr::paths::download("jq.exe", jq_url());
     let jq_target = install_dir.join(bin_name!("jq"));
     cu::fs::copy(jq_exe, jq_target)?;
+
     let task_zip = hmgr::paths::download("task.zip", task_url());
     let temp_dir = hmgr::paths::temp_dir("task-zip");
-    opfs::un7z(task_zip, &temp_dir, ctx.bar_ref())?;
+    opfs::unarchive(task_zip, &temp_dir, false)?;
     let task_exe = temp_dir.join(bin_name!("task"));
     cu::fs::copy(task_exe, install_dir.join(bin_name!("task")))?;
 
@@ -169,43 +173,40 @@ pub fn uninstall(_: &Context) -> cu::Result<()> {
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
     let exe_path = opfs::find_in_wingit("usr/bin/perl.exe")?;
-    ctx.add_item(hmgr::Item::ShimBin(
-        bin_name!("perl").to_string(),
-        vec![exe_path.into_utf8()?],
+    ctx.add_item(Item::shim_bin(
+        bin_name!("perl"),
+        ShimCommand::target( exe_path.into_utf8()?)
     ))?;
     let exe_path = opfs::find_in_wingit("usr/bin/gpg.exe")?;
-    ctx.add_item(hmgr::Item::ShimBin(
-        bin_name!("gpg").to_string(),
-        vec!["/bash/".to_string(), exe_path.into_utf8()?],
+    ctx.add_item(Item::shim_bin(
+        bin_name!("gpg"),
+        ShimCommand::target_bash( exe_path.into_utf8()?)
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
+    ctx.add_item(Item::link_bin(
         hmgr::paths::binary(bin_name!("wget")).into_utf8()?,
         ctx.install_dir().join(bin_name!("wget")).into_utf8()?,
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
+    ctx.add_item(Item::link_bin(
         hmgr::paths::binary(bin_name!("fzf")).into_utf8()?,
         ctx.install_dir().join(bin_name!("fzf")).into_utf8()?,
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
+    ctx.add_item(Item::link_bin(
         hmgr::paths::binary(bin_name!("jq")).into_utf8()?,
         ctx.install_dir().join(bin_name!("jq")).into_utf8()?,
     ))?;
     let task_exe = ctx.install_dir().join(bin_name!("task")).into_utf8()?;
-    ctx.add_item(hmgr::Item::LinkBin(
+    ctx.add_item(Item::link_bin(
         hmgr::paths::binary(bin_name!("task")).into_utf8()?,
         task_exe.clone(),
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
+    ctx.add_item(Item::link_bin(
         hmgr::paths::binary(bin_name!("x")).into_utf8()?,
         task_exe,
     ))?;
     let script = r#"Invoke-Expression (& {((task --completion powershell).replace("-CommandName task","-CommandName task,x") | Out-String)})"#;
-    ctx.add_item(hmgr::Item::Pwsh(script.to_string()))?;
+    ctx.add_item(Item::pwsh(script))?;
 
-    ctx.add_item(hmgr::Item::UserEnvVar(
-        "EDITOR".to_string(),
-        "viopen".to_string(),
-    ))?;
+    ctx.add_item(Item::user_env_var("EDITOR", "viopen"))?;
 
     // zoxide needs to be after starship, recommended to be at the end
     let script = command_output!("zoxide", ["init", "powershell", "--cmd", "c"]);
@@ -213,11 +214,12 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
 
     ctx.add_item(hmgr::Item::ShimBin(
         bin_name!("vihosts").to_string(),
-        vec![
+        ShimCommand::target_args(
             cu::which("cmd")?.into_utf8()?,
-            "/c".to_string(),
-            "viopen %SystemDrive%\\Windows\\System32\\drivers\\etc\\hosts".to_string(),
-        ],
+                [
+            "/c",
+            "viopen %SystemDrive%\\Windows\\System32\\drivers\\etc\\hosts"
+        ]),
     ))?;
 
     common::ALIAS_VERSION.update()?;

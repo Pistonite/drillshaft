@@ -51,11 +51,11 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     let install_dir = ctx.install_dir();
     let exe_path = hmgr::paths::binary("7z.exe");
     let exefm_path = hmgr::paths::binary("7zfm.exe");
-    ctx.add_item(hmgr::Item::LinkBin(
+    ctx.add_item(Item::link_bin(
         exe_path.into_utf8()?,
         install_dir.join("7z.exe").into_utf8()?,
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
+    ctx.add_item(Item::link_bin(
         exefm_path.into_utf8()?,
         install_dir.join("7zFM.exe").into_utf8()?,
     ))?;

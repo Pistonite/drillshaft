@@ -41,7 +41,7 @@ pub(crate) mod _stub;
 
 pub(crate) mod pre {
     pub(crate) use crate::{
-        BinId, Context, Package, PkgId, Verified, check_bin_in_path, check_bin_in_path_and_shaft,
+        BinId, Context, PkgId, Verified, check_bin_in_path, check_bin_in_path_and_shaft,
         check_installed_with_cargo, metadata, register_binaries,
     };
     #[cfg(target_os = "linux")]
@@ -49,7 +49,9 @@ pub(crate) mod pre {
     pub(crate) use corelib::{
         Version, VersionCache, bin_name, command_output, epkg, hmgr, if_arm, jsexe, opfs,
     };
+    pub(crate) use corelib::hmgr::Item;
     pub(crate) use cu::pre::*;
     pub(crate) use enumset::{EnumSet, enum_set};
     pub(crate) use std::path::{Path, PathBuf};
+    pub(crate) use shaftim_build::ShimCommand;
 }

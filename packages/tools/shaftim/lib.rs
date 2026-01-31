@@ -1,27 +1,54 @@
-use std::env::ArgsOs;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::Path;
-use std::process::{Command, ExitCode};
+use std::process::Command;
 
+/// Get the executable name as bytes
 #[inline(always)]
 pub fn exe_name(s: &OsStr) -> &[u8] {
     match Path::new(s).file_name() {
         Some(name) => name.as_encoded_bytes(),
-        None => &[]
+        None => &[],
     }
 }
 
-pub fn exec_bash_replace(cfg_args: &[&str], cli_args: ArgsOs) -> ExitCode {
+/// Prepend to the PATH
+#[inline(always)]
+pub fn set_path(cmd: &mut Command, paths_to_prepend: &str) {
+    match std::env::var_os("PATH") {
+        Some(path) => {
+            let mut new_path = OsString::from(paths_to_prepend);
+            new_path.push(paths_to_prepend);
+            if cfg!(windows) {
+                new_path.push(";");
+            } else {
+                new_path.push(":");
+            }
+            new_path.push(&path);
+            cmd.env("PATH", path);
+        }
+        None => {
+            cmd.env("PATH", paths_to_prepend);
+        }
+    }
+}
+
+#[cfg(windows)]
+pub fn exec_bash_replace(cfg_args: &[&str], cli_args: std::env::ArgsOs) -> std::process::ExitCode {
     // the library we use only supports utf8
     let mut cli_args_utf8 = Vec::with_capacity(cli_args.len());
     for a in cli_args {
         let Some(a) = a.to_str() else {
             eprintln!("non utf-8 argument: {}", a.display());
-            return ExitCode::FAILURE;
+            return std::process::ExitCode::FAILURE;
         };
         cli_args_utf8.push(a.to_string());
     }
-    let script = shell_words::join(cfg_args.iter().copied().chain(cli_args_utf8.iter().map(|x| x.as_str())));
+    let script = shell_words::join(
+        cfg_args
+            .iter()
+            .copied()
+            .chain(cli_args_utf8.iter().map(|x| x.as_str())),
+    );
     let mut cmd = Command::new("bash.exe");
     cmd.args(["-c", &script]);
     exec_replace(cmd)
@@ -33,8 +60,8 @@ pub use imp::exec_replace;
 // https://github.com/rust-lang/cargo/blob/master/crates/cargo-util/src/process_builder.rs
 #[cfg(unix)]
 mod imp {
-    use std::process::{ExitCode, Command};
     use std::os::unix::process::CommandExt;
+    use std::process::{Command, ExitCode};
     #[inline(always)]
     pub fn exec_replace(mut command: Command) -> ExitCode {
         // execvp
@@ -45,7 +72,7 @@ mod imp {
 }
 #[cfg(windows)]
 mod imp {
-    use std::process::{ExitCode, Command};
+    use std::process::{Command, ExitCode};
 
     use windows_sys::Win32::Foundation::{FALSE, TRUE};
     use windows_sys::Win32::System::Console::SetConsoleCtrlHandler;
@@ -65,9 +92,7 @@ mod imp {
     /// (and we shouldn't!) until the process itself later exits.
     #[inline(always)]
     pub fn exec_replace(mut command: Command) -> ExitCode {
-        let success = unsafe {
-            SetConsoleCtrlHandler(Some(ctrlc_handler), TRUE)
-        };
+        let success = unsafe { SetConsoleCtrlHandler(Some(ctrlc_handler), TRUE) };
         if success == FALSE {
             eprintln!("execvp: failed to set ctrl-c handler");
             return ExitCode::from(254);

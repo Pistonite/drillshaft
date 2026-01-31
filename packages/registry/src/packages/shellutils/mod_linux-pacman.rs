@@ -13,10 +13,6 @@ register_binaries!(
 mod common;
 mod perl;
 
-pub fn binary_dependencies() -> EnumSet<BinId> {
-    enum_set! { BinId::_7z }
-}
-
 pub fn verify(_: &Context) -> cu::Result<Verified> {
     check_installed_pacman_package!("perl");
     let v = perl::version_check()?;
@@ -140,42 +136,39 @@ pub fn uninstall(ctx: &Context) -> cu::Result<()> {
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
     let task_exe = ctx.install_dir().join(bin_name!("task")).into_utf8()?;
-    ctx.add_item(hmgr::Item::LinkBin(
+    ctx.add_item(Item::link_bin(
         hmgr::paths::binary(bin_name!("task")).into_utf8()?,
         task_exe.clone(),
     ))?;
-    ctx.add_item(hmgr::Item::LinkBin(
+    ctx.add_item(Item::link_bin(
         hmgr::paths::binary(bin_name!("x")).into_utf8()?,
         task_exe.clone(),
     ))?;
     let mut script = command_output!(&task_exe, ["--completion", "bash"]);
     script.push_str("\ncomplete -F _task x");
-    ctx.add_item(hmgr::Item::Bash(script))?;
+    ctx.add_item(Item::bash(script))?;
     let mut script = "compdef _task x\n".to_string();
     script.push_str(&command_output!(&task_exe, ["--completion", "zsh"]));
-    ctx.add_item(hmgr::Item::Zsh(script))?;
+    ctx.add_item(Item::zsh(script))?;
 
-    ctx.add_item(hmgr::Item::UserEnvVar(
-        "EDITOR".to_string(),
-        "viopen".to_string(),
-    ))?;
+    ctx.add_item(Item::user_env_var("EDITOR", "viopen"))?;
 
     // zoxide needs to be after starship, recommended to be at the end
     let script = command_output!("zoxide", ["init", "bash", "--cmd", "c"]);
-    ctx.add_priority_item(-1, hmgr::Item::Bash(script))?;
+    ctx.add_priority_item(-1, Item::bash(script))?;
     let script = command_output!("zoxide", ["init", "zsh", "--cmd", "c"]);
-    ctx.add_priority_item(-1, hmgr::Item::Zsh(script))?;
+    ctx.add_priority_item(-1, Item::zsh(script))?;
 
     if let Some(mut home) = std::env::home_dir() {
         home.push(".bashrc");
-        ctx.add_item(hmgr::Item::ShimBin(
-            "vibash".to_string(),
-            vec![cu::which("viopen")?.into_utf8()?, home.into_utf8()?],
+        ctx.add_item(Item::shim_bin(
+            "vibash",
+            ShimCommand::target_args(cu::which("viopen")?.into_utf8()?, [home.into_utf8()?]),
         ))?;
     }
-    ctx.add_item(hmgr::Item::ShimBin(
-        "vihosts".to_string(),
-        vec![cu::which("viopen")?.into_utf8()?, "/etc/hosts".to_string()],
+    ctx.add_item(Item::shim_bin(
+        "vihosts",
+        ShimCommand::target_args(cu::which("viopen")?.into_utf8()?, ["/etc/hosts"]),
     ))?;
 
     common::ALIAS_VERSION.update()?;

@@ -1,6 +1,0 @@
-{
-    "lsa.exe": ["eza", "-a"],
-    "lsl.exe": ["eza", "-l"],
-    "foo.exe": ["bar"],
-    "gpg.exe": ["/bash/", "gpg"]
-}

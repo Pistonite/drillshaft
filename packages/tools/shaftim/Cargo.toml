@@ -1,27 +1,20 @@
 [package]
-name = "shaft-shim-build"
+name = "shaftim"
 version = "0.0.0"
 description = "building a wrapper binary for executing a command"
 edition = "2024"
 publish = false
 
-[workspace]
-
-[dependencies]
-shell-words = "1.1.1"
-
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console"] }
+shell-words.workspace = true
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2.180"
+libc.workspace = true
 
 [build-dependencies]
-serde = "1"
-[build-dependencies.cu]
-package = "pistonite-cu"
-version = "0.7.2"
-features = ["fs", "json"]
+shaftim-build = { path = "../shaftim-build", default-features = false, features = ["build"] }
+cu = { workspace = true, features = [ "fs" ] }
 
 [lib]
 path = "lib.rs"

@@ -3,6 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use cu::pre::*;
+use shaftim_build::{ShimCommand, ShimConfig};
 
 use crate::{bin_name, hmgr, opfs};
 
@@ -480,7 +481,7 @@ impl ItemMgr {
 
     #[cu::context("failed to build shims")]
     fn rebuild_shim(&mut self, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
-        let mut shim_config = BTreeMap::<String, Vec<String>>::default();
+        let mut shim_config = ShimConfig::default();
         for entry in &self.items {
             use std::collections::btree_map::Entry;
             let Item::ShimBin(name, args) = &entry.item else {
@@ -501,7 +502,7 @@ impl ItemMgr {
 
         hmgr::tools::ensure_unpacked()?;
         let mut shim_path = hmgr::paths::tools_root();
-        shim_path.push("shim-build");
+        shim_path.push("shaftim");
 
         let (child, bar) = cu::which("cargo")?
             .command()
@@ -518,8 +519,8 @@ impl ItemMgr {
             .spawn()?;
         child.wait_nz()?;
         bar.done();
-        shim_path.extend(["target", "release"]);
-        shim_path.push(bin_name!("shaftim"));
+        let mut shim_path = hmgr::paths::tools_root();
+        shim_path.extend(["target", "release", bin_name!("shaftim")]);
         let shim_binary = hmgr::paths::shim_binary();
         let shim_binary_old = hmgr::paths::shim_binary_old();
         if shim_binary.exists() {
@@ -551,7 +552,7 @@ impl ItemMgr {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ItemEntry {
     package: String,
     item: Item,
@@ -563,7 +564,7 @@ pub struct ItemEntry {
 /// An item is an injection to the installation. Packages
 /// register these items on install, and when uninstalled,
 /// these items will be automatically cleaned up.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Item {
     /// Setting a user environment variable.
     ///
@@ -588,7 +589,7 @@ pub enum Item {
     ///    (because of DLL dependency, usually)
     /// 2. If the target binary or script should be invoked with extra
     ///    arguments.
-    ShimBin(String, Vec<String>),
+    ShimBin(String, ShimCommand),
 
     /// Powershell script added to the init.pwsh script
     Pwsh(String),
@@ -604,4 +605,41 @@ pub enum Item {
     /// Use UserEnvVar or UserPath to modify environment variables and PATHs
     /// to auto apply to all shells
     Zsh(String),
+}
+
+impl Item {
+    #[inline(always)]
+    pub fn user_env_var(key: impl Into<String>, value: impl Into<String>) -> Self {
+        Self::UserEnvVar(key.into(), value.into())
+    }
+
+    #[inline(always)]
+    pub fn user_path(path: impl Into<String>) -> Self {
+        Self::UserPath(path.into())
+    }
+
+    #[inline(always)]
+    pub fn link_bin(name: impl Into<String>, target: impl Into<String>) -> Self {
+        Self::LinkBin(name.into(), target.into())
+    }
+
+    #[inline(always)]
+    pub fn shim_bin(name: impl Into<String>, command: ShimCommand) -> Self {
+        Self::ShimBin(name.into(), command)
+    }
+
+    #[inline(always)]
+    pub fn pwsh(script: impl Into<String>) -> Self {
+        Self::Pwsh(script.into())
+    }
+
+    #[inline(always)]
+    pub fn bash(script: impl Into<String>) -> Self {
+        Self::Bash(script.into())
+    }
+
+    #[inline(always)]
+    pub fn zsh(script: impl Into<String>) -> Self {
+        Self::Zsh(script.into())
+    }
 }

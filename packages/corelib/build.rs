@@ -32,6 +32,47 @@ fn make_tools_targz() -> cu::Result<()> {
         path
     };
 
+    // Create a Cargo.toml for tools that inherit dependencies versions
+    // from shaft itself
+    let workspace_cargo_toml = {
+        let mut path = crate_path.parent_abs_times(2)?;
+        path.push("Cargo.toml");
+        println!("cargo::rerun-if-changed={}", path.as_utf8()?);
+        cu::toml::parse::<cu::toml::Table>(&cu::fs::read_string(&path)?)?
+    };
+
+    let tools_cargo_content = {
+        let mut out = r#"
+[workspace]
+resolver = "2"
+members = [
+    "shaftim",
+    "shaftim-build",
+]
+"#.to_string();
+        let mut new_table = cu::toml::Table::new();
+        if let Some(workspace) = workspace_cargo_toml.get("workspace") {
+            if let Some(deps) = workspace.get("dependencies") {
+                let mut ws = cu::toml::Table::new();
+                ws.insert("dependencies".to_string(), deps.clone());
+                new_table.insert("workspace".to_string(), cu::toml::Value::Table(ws));
+            }
+        }
+        out.push_str(&cu::toml::stringify_pretty(&new_table)?);
+        out
+    };
+
+    cu::fs::write(tools_path.join("Cargo.toml"), &tools_cargo_content)?;
+    {
+        let bytes = tools_cargo_content.as_bytes();
+        let mut header = tar::Header::new_gnu();
+        header.set_path("Cargo.toml")?;
+        header.set_size(bytes.len() as u64);
+        header.set_mode(0o644);
+        header.set_cksum();
+        tar_builder.append(&header, bytes)?;
+    }
+
     let mut builder = WalkBuilder::new(&tools_path);
     builder.filter_entry(|entry| {
         if entry.file_type().is_none_or(|x| !x.is_dir()) {
@@ -39,6 +80,7 @@ fn make_tools_targz() -> cu::Result<()> {
         }
         cfg!(windows) || entry.file_name() != "__windows__"
     });
+    builder.add_custom_ignore_filename(".corelibignore");
 
     for entry in builder.build() {
         let entry = entry?;

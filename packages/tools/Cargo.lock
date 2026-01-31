@@ -114,9 +114,9 @@ checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
 
 [[package]]
 name = "pistonite-cu"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c1daf63aa21b94fe1b189783c76a643429eececd645810a35e3e5cfa3577945"
+checksum = "90c6fa6597f84f3a41d4e4262c9587cd9657d8f1bd2aee513c610335d23fd778"
 dependencies = [
  "anyhow",
  "dunce",
@@ -237,14 +237,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "shaft-shim-build"
+name = "shaftim"
 version = "0.0.0"
 dependencies = [
  "libc",
  "pistonite-cu",
- "serde",
+ "shaftim-build",
  "shell-words",
  "windows-sys",
+]
+
+[[package]]
+name = "shaftim-build"
+version = "0.0.0"
+dependencies = [
+ "pistonite-cu",
+ "pistonite-pm",
+ "serde",
 ]
 
 [[package]]
@@ -325,6 +334,6 @@ checksum = "d135d17ab770252ad95e9a872d365cf3090e3be864a34ab46f48555993efc904"
 
 [[package]]
 name = "zmij"
-version = "1.0.12"
+version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fc5a66a20078bf1251bde995aa2fdcc4b800c70b5d92dd2c62abc5c60f679f8"
+checksum = "1966f8ac2c1f76987d69a74d0e0f929241c10e78136434e3be70ff7f58f64214"

@@ -7,10 +7,6 @@ static CFG_VERSION: VersionCache =
 static FONT_VERSION: VersionCache =
     VersionCache::new("hack-nerd-font", metadata::hack_font::VERSION);
 
-pub fn binary_dependencies() -> EnumSet<BinId> {
-    enum_set! { BinId::_7z }
-}
-
 pub fn config_dependencies() -> EnumSet<PkgId> {
     enum_set! { PkgId::Pwsh }
 }
@@ -45,7 +41,7 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     cu::info!("installing hack nerd font...");
     let zip_path = hmgr::paths::download("hack-nerd-font.zip", font_download_url());
     let temp_dir = hmgr::paths::temp_dir("hack-nerd-font");
-    opfs::un7z(&zip_path, &temp_dir, ctx.bar_ref())?;
+    opfs::unarchive(&zip_path, &temp_dir, true)?;
 
     // install all *.ttf files in temp_dir for current user
     let script = format!(

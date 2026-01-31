@@ -4,10 +4,6 @@ use crate::pre::*;
 
 register_binaries!("pwsh");
 
-pub fn binary_dependencies() -> EnumSet<BinId> {
-    enum_set! { BinId::_7z }
-}
-
 pub fn config_dependencies() -> EnumSet<PkgId> {
     enum_set! { PkgId::Shellutils }
 }
@@ -54,16 +50,15 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
 
     let pwsh_zip = hmgr::paths::download("pwsh.zip", download_url());
     let pwsh_dir = ctx.install_dir();
-    opfs::un7z(pwsh_zip, &pwsh_dir, ctx.bar_ref())?;
+    opfs::unarchive(pwsh_zip, &pwsh_dir, true)?;
 
     Ok(())
 }
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
     let pwsh_exe = ctx.install_dir().join("pwsh.exe");
-    ctx.add_item(hmgr::Item::ShimBin(
-        "pwsh.exe".to_string(),
-        vec![pwsh_exe.as_utf8()?.to_string()],
+    ctx.add_item(Item::shim_bin(bin_name!("pwsh"),
+        ShimCommand::target(pwsh_exe.as_utf8()?)
     ))?;
     // get ps7 profile location
     let (child, stdout) = pwsh_exe
@@ -109,12 +104,13 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     }
 
     if ctx.is_installed(PkgId::Shellutils) {
-        ctx.add_item(hmgr::Item::ShimBin(
-            bin_name!("vipwsh").to_string(),
-            vec![
+        ctx.add_item(Item::shim_bin(
+            bin_name!("vipwsh"),
+            ShimCommand::target_args(
                 cu::which("viopen")?.into_utf8()?,
+                [
                 edit_profile_path.into_utf8()?,
-            ],
+            ]),
         ))?;
     }
     Ok(())

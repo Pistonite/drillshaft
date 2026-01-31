@@ -106,36 +106,36 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
                 let link_path = hmgr::paths::binary(bin_name!(&util)).into_utf8()?;
                 if is_alias {
                     cu::info!("removing powershell alias: {util}");
-                    ctx.add_item(hmgr::Item::Pwsh(format!("Remove-Item Alias:{util} -Force")))?;
+                    ctx.add_item(Item::pwsh(format!("Remove-Item Alias:{util} -Force")))?;
                 }
                 if is_binary {
                     cu::info!("overriding powershell command: {util}");
-                    ctx.add_item(hmgr::Item::Pwsh(format!(
+                    ctx.add_item(Item::pwsh(format!(
                         "Set-Alias -Name {util} -Value '{link_path}'"
                     )))?;
                 }
-                ctx.add_item(hmgr::Item::LinkBin(link_path, coreutils_path.clone()))?;
+                ctx.add_item(Item::link_bin(link_path, coreutils_path.clone()))?;
             }
             cu::Ok(())
         })?;
     }
     // configure utils from mingw
     let exe_path = opfs::find_in_wingit("usr/bin/grep.exe")?;
-    ctx.add_item(hmgr::Item::ShimBin(
-        bin_name!("grep").to_string(),
-        vec![exe_path.into_utf8()?, "--color=auto".to_string()],
+    ctx.add_item(Item::shim_bin(
+        bin_name!("grep"),
+        ShimCommand::target_args(exe_path.into_utf8()?, ["--color=auto"]),
     ))?;
     const MINGW_UTILS: &[&str] = &["diff", "diff3", "cmp", "find", "gzip", "sed", "unzip"];
     for util in MINGW_UTILS {
         let exe_path = opfs::find_in_wingit(format!("usr/bin/{util}.exe"))?;
-        ctx.add_item(hmgr::Item::ShimBin(
+        ctx.add_item(Item::shim_bin(
             bin_name!(util),
-            vec![exe_path.into_utf8()?],
+            ShimCommand::target(exe_path.into_utf8()?),
         ))?;
     }
     // find is not part of coreutils - replace System32\find.exe in PowerShell
     let findutil_path = hmgr::paths::binary(bin_name!("find")).into_utf8()?;
-    ctx.add_item(hmgr::Item::Pwsh(format!(
+    ctx.add_item(Item::pwsh(format!(
         "Set-Alias -Name find -Value '{findutil_path}'"
     )))?;
 
@@ -145,9 +145,9 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     zip_path.extend(["__windows__", "zip", "zip.exe"]);
     hmgr::tools::ensure_unpacked()?;
     // using shim bin because of dll deps
-    ctx.add_item(hmgr::Item::ShimBin(
-        bin_name!("zip").to_string(),
-        vec![zip_path.into_utf8()?],
+    ctx.add_item(Item::shim_bin(
+        bin_name!("zip"),
+        ShimCommand::target(zip_path.into_utf8()?),
     ))?;
 
     common::ALIAS_VERSION.update()?;

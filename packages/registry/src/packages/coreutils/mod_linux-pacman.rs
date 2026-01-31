@@ -78,18 +78,15 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     let install_dir = ctx.install_dir();
     let update_mirrors_sh = install_dir.join("update-mirrors.sh");
 
-    ctx.add_item(hmgr::Item::ShimBin(
-        "update-mirrors".to_string(),
-        vec![
-            cu::which("bash")?.into_utf8()?,
-            update_mirrors_sh.into_utf8()?,
-        ],
+    ctx.add_item(Item::shim_bin(
+        "update-mirrors",
+        ShimCommand::target_args(cu::which("bash")?.into_utf8()?, [update_mirrors_sh.into_utf8()?]),
     ))?;
 
     // using shell alias for UI-only differences
     let grep_alias = "alias grep='grep --color=auto'";
-    ctx.add_item(hmgr::Item::Bash(grep_alias.to_string()))?;
-    ctx.add_item(hmgr::Item::Zsh(grep_alias.to_string()))?;
+    ctx.add_item(Item::bash(grep_alias))?;
+    ctx.add_item(Item::zsh(grep_alias))?;
     common::ALIAS_VERSION.update()?;
 
     Ok(())
