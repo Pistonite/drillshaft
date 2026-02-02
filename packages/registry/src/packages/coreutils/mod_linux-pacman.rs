@@ -22,31 +22,21 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     eza::verify()?;
     check_bin_in_path_and_shaft!("update-mirrors");
     check_installed_pacman_package!("base");
+
     let v = check_installed_pacman_package!("bash");
-    if Version(&v) < metadata::coreutils::bash::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::coreutils::bash::VERSION);
     let v = check_installed_pacman_package!("bash-completion");
-    if Version(&v) < metadata::coreutils::bash_cmp::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::coreutils::bash_cmp::VERSION);
 
     let v = check_installed_pacman_package!("zip");
-    if Version(&v) < metadata::coreutils::zip::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::coreutils::zip::VERSION);
     let v = check_installed_pacman_package!("unzip");
-    if Version(&v) < metadata::coreutils::unzip::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::coreutils::unzip::VERSION);
     let v = check_installed_pacman_package!("tar");
-    if Version(&v) < metadata::coreutils::tar::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::coreutils::tar::VERSION);
     let v = check_installed_pacman_package!("which");
-    if Version(&v) < metadata::coreutils::which::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::coreutils::which::VERSION);
+
     Ok(Verified::is_uptodate(common::ALIAS_VERSION.is_uptodate()?))
 }
 
@@ -80,10 +70,7 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
 
     ctx.add_item(Item::shim_bin(
         "update-mirrors",
-        ShimCommand::target_args(
-            cu::which("bash")?.into_utf8()?,
-            [update_mirrors_sh.into_utf8()?],
-        ),
+        ShimCommand::target("bash").paths([update_mirrors_sh.into_utf8()?]),
     ))?;
 
     // using shell alias for UI-only differences

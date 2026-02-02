@@ -60,9 +60,9 @@ pub fn install(package_name: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Re
         .add(cu::args!["-S", package_name, "--noconfirm", "--needed"])
         .stdout(
             cu::pio::spinner(format!("pacman install '{package_name}'"))
-                .configure_spinner(|builder| builder.parent(bar.cloned())),
+                .configure_spinner(|builder| builder.keep(true).parent(bar.cloned())),
         )
-        .stderr(cu::lv::E)
+        .stderr(cu::lv::W)
         .stdin_null()
         .spawn()?;
     child.wait_nz()?;
@@ -101,7 +101,7 @@ pub fn uninstall(package_name: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::
         .add(cu::args!["-R", package_name, "--noconfirm"])
         .stdout(
             cu::pio::spinner(format!("pacman uninstall '{package_name}'"))
-                .configure_spinner(|builder| builder.parent(bar.cloned())),
+                .configure_spinner(|builder| builder.keep(true).parent(bar.cloned())),
         )
         .stderr(cu::lv::E)
         .stdin_null()

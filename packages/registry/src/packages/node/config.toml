@@ -5,7 +5,7 @@ The default versions to install when syncing
 empty string = not specifed = latest/default
 """
 children = [
-    { key = "node", value = "" },
-    { key = "yarn", value = "" },
-    { key = "pnpm", value = "" },
+    { key = ["node"], value = "" },
+    { key = ["yarn"], value = "" },
+    { key = ["pnpm"], value = "" },
 ]

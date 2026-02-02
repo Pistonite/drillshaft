@@ -1,4 +1,4 @@
-//! Windows C/C++ Toolchain via llvm-mingw
+//! Windows GNU (via MinGW) and LLVM C/C++ Toolchain
 use std::collections::BTreeSet;
 
 use crate::pre::*;

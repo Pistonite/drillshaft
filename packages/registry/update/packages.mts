@@ -185,6 +185,11 @@ export const pkg_volta: PackageFn = (meta) =>
         query: (_, tag) => ({ "pnpm.VERSION": strip_v(tag) })
     });
 export const pkg_uv = default_cratesio_fetcher("uv");
+export const pkg_gnucc: PackageFn = () => [
+    fetch_from_arch_linux({ package: "gcc", query: (v) => ({ "gcc.VERSION": v.split("+", 2)[0] })}),
+    fetch_from_arch_linux({ package: "binutils", query: (v) => ({ "binutils.VERSION": v.split("+", 2)[0] })}),
+    fetch_from_arch_linux({ package: "gdb", query: (v) => ({ "gdb.VERSION": v }) })
+];
 export const pkg_clang: PackageFn = (meta) => [
     fetch_from_github_release({
         repo: meta.repo(),

@@ -23,56 +23,36 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
         cu::which("gpg"),
         "gnupg is a dependency of Arch Linux and is not found"
     )?;
+
     let v = check_installed_pacman_package!("curl");
-    if Version(&v) < metadata::curl::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::curl::VERSION);
     let v = check_installed_pacman_package!("wget");
-    if Version(&v) < metadata::wget::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::wget::VERSION);
     let v = check_installed_pacman_package!("fzf");
-    if Version(&v) < metadata::fzf::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::fzf::VERSION);
     let v = check_installed_pacman_package!("jq");
-    if Version(&v) < metadata::jq::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::jq::VERSION);
+
     check_bin_in_path_and_shaft!("task");
     check_bin_in_path_and_shaft!("x");
     let v = command_output!("task", ["--version"]);
-    if Version(&v) < metadata::task::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v, metadata::task::VERSION);
+
     let v = check_installed_with_cargo!("bat");
-    if Version(&v.version) < metadata::bat::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v.version, metadata::bat::VERSION);
     let v = check_installed_with_cargo!("dust", "du-dust");
-    if Version(&v.version) < metadata::dust::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v.version, metadata::dust::VERSION);
     let v = check_installed_with_cargo!("find", "fd-find");
-    if Version(&v.version) < metadata::fd::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v.version, metadata::fd::VERSION);
     let v = check_installed_with_cargo!("websocat");
-    if Version(&v.version) < metadata::websocat::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v.version, metadata::websocat::VERSION);
     let v = check_installed_with_cargo!("zoxide");
-    if Version(&v.version) < metadata::zoxide::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v.version, metadata::zoxide::VERSION);
     let v = check_installed_with_cargo!("viopen");
-    if Version(&v.version) < metadata::shellutils::viopen::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v.version, metadata::shellutils::viopen::VERSION);
     let v = check_installed_with_cargo!("n");
-    if Version(&v.version) < metadata::shellutils::n::VERSION {
-        return Ok(Verified::NotUpToDate);
-    }
+    check_outdated!(&v.version, metadata::shellutils::n::VERSION);
+
     Ok(Verified::is_uptodate(common::ALIAS_VERSION.is_uptodate()?))
 }
 
@@ -86,7 +66,9 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
     cu::fs::make_dir(&install_dir)?;
 
     let task_tgz = hmgr::paths::download("task.tgz", task_url());
-    opfs::unarchive(task_tgz, install_dir.join(bin_name!("task")), false)?;
+    let task_temp = hmgr::paths::temp_dir("task-unarchive");
+    opfs::unarchive(task_tgz, &task_temp, true)?;
+    cu::fs::copy(task_temp.join("task"), install_dir.join("task"))?;
 
     epkg::pacman::install("perl", ctx.bar_ref())?;
     epkg::pacman::install("curl", ctx.bar_ref())?;
@@ -158,12 +140,12 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
         home.push(".bashrc");
         ctx.add_item(Item::shim_bin(
             "vibash",
-            ShimCommand::target_args(cu::which("viopen")?.into_utf8()?, [home.into_utf8()?]),
+            ShimCommand::target("viopen").args([home.into_utf8()?]),
         ))?;
     }
     ctx.add_item(Item::shim_bin(
         "vihosts",
-        ShimCommand::target_args(cu::which("viopen")?.into_utf8()?, ["/etc/hosts"]),
+        ShimCommand::target("viopen").args(["/etc/hosts"]),
     ))?;
 
     common::ALIAS_VERSION.update()?;

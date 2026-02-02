@@ -16,7 +16,7 @@ pub fn fix_exe_name(s: &OsStr, out: &mut [u8]) -> usize {
     #[inline(always)]
     #[cfg(not(windows))]
     fn match_path_sep(b: &u8) -> bool {
-        *b == '/'
+        *b == b'/'
     }
     let bytes = match bytes.iter().rposition(match_path_sep) {
         None => bytes,

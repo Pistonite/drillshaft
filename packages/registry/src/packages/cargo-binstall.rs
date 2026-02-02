@@ -6,9 +6,8 @@ register_binaries!("cargo-binstall");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
     let info = check_installed_with_cargo!("cargo-binstall");
-    Ok(Verified::is_uptodate(
-        !(Version(&info.version).lt(metadata::cargo_binstall::VERSION)),
-    ))
+    check_outdated!(&info.version, metadata::cargo_binstall::VERSION);
+    Ok(Verified::UpToDate)
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {

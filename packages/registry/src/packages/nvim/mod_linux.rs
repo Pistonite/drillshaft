@@ -25,22 +25,23 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
             path
         }
     };
-    let (child, stdout) = binary
-        .command()
-        .arg("--version")
-        .stdout(cu::pio::string())
-        .stdie_null()
-        .spawn()?;
-    child.wait_nz()?;
-    let stdout = stdout.join()??;
-    let version_line = stdout.lines().next().unwrap_or("");
-    let Some(version) = version_line.strip_prefix("NVIM v") else {
-        cu::warn!("nvim --version returned unexpected output: {stdout}");
-        return Ok(Verified::NotUpToDate);
-    };
-    if Version(version) >= VERSION {
-        return Ok(Verified::UpToDate);
-    }
+    todo!();
+    // let (child, stdout) = binary
+    //     .command()
+    //     .arg("--version")
+    //     .stdout(cu::pio::string())
+    //     .stdie_null()
+    //     .spawn()?;
+    // child.wait_nz()?;
+    // let stdout = stdout.join()??;
+    // let version_line = stdout.lines().next().unwrap_or("");
+    // let Some(version) = version_line.strip_prefix("NVIM v") else {
+    //     cu::warn!("nvim --version returned unexpected output: {stdout}");
+    //     return Ok(Verified::NotUpToDate);
+    // };
+    // if Version(version) >= VERSION {
+    //     return Ok(Verified::UpToDate);
+    // }
 
     Ok(Verified::NotUpToDate)
 }

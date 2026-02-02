@@ -16,7 +16,7 @@ pub fn version_check() -> cu::Result<Verified> {
         };
         let version = &rest[..j];
         return Ok(Verified::is_uptodate(
-            !(Version(version) < metadata::perl::VERSION),
+            !(Version(version).lt(metadata::perl::VERSION)),
         ));
     }
     cu::bail!("failed to get perl version from output: {stdout}");

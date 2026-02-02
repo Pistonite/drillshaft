@@ -114,6 +114,11 @@ yarn.VERSION = "4"
 ALIAS_VERSION = "1"
 VERSION = "0.9.28"
 
+[gnucc]
+gcc.VERSION = "15.2.1"
+binutils.VERSION = "2.45.1"
+gdb.VERSION = "17.1"
+
 [clang]
 REPO = "https://github.com/llvm/llvm-project"
 'cfg(all(windows,target_arch="aarch64"))'.SHA = "f214b1226d8de005b5f691dd29d9dfea2b49e22d0de445429916173dbb626f7f"

@@ -93,7 +93,7 @@ pub fn install_git_commit(
         ])
         .preset(
             cu::pio::cargo(format!("cargo install '{package}'"))
-                .configure_spinner(|builder| builder.parent(bar.cloned())),
+                .configure_spinner(|builder| builder.keep(true).parent(bar.cloned())),
         )
         .spawn()?;
     child.wait_nz()?;
@@ -112,7 +112,7 @@ pub fn install(package: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<
         .add(cu::args!["install", package, "--locked"])
         .preset(
             cu::pio::cargo(format!("cargo install '{package}'"))
-                .configure_spinner(|builder| builder.parent(bar.cloned())),
+                .configure_spinner(|builder| builder.keep(true).parent(bar.cloned())),
         )
         .spawn()?;
     child.wait_nz()?;
@@ -137,7 +137,7 @@ pub fn binstall(package: &str, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result
         ])
         .stdout(
             cu::pio::spinner(format!("cargo binstall '{package}'"))
-                .configure_spinner(|builder| builder.parent(bar.cloned())),
+                .configure_spinner(|builder| builder.keep(true).parent(bar.cloned())),
         )
         .stderr(cu::lv::E)
         .stdin_null()
@@ -170,7 +170,7 @@ pub fn binstall_git(
         ])
         .stdout(
             cu::pio::spinner(format!("cargo binstall '{package}'"))
-                .configure_spinner(|builder| builder.parent(bar.cloned())),
+                .configure_spinner(|builder| builder.keep(true).parent(bar.cloned())),
         )
         .stderr(cu::lv::E)
         .stdin_null()
