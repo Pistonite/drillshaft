@@ -4,7 +4,7 @@ use corelib::opfs;
 use cu::pre::*;
 use enumset::EnumSet;
 
-use crate::{_stub, BinId, Context, PkgId, Verified};
+use crate::{BinId, Context, PkgId, Verified};
 
 /// Metadata for a package
 pub struct Package {
@@ -40,7 +40,6 @@ pub struct Package {
     pub(crate) binary_dependencies_fn: fn() -> EnumSet<BinId>,
     pub(crate) config_dependencies_fn: fn() -> EnumSet<PkgId>,
     pub(crate) download_fn: fn(&Context) -> cu::Result<()>,
-    pub(crate) build_fn: fn(&Context) -> cu::Result<()>,
     pub(crate) configure_fn: fn(&Context) -> cu::Result<()>,
     pub(crate) clean_fn: fn(&Context) -> cu::Result<()>,
     pub(crate) config_location_fn: fn(&Context) -> cu::Result<Option<PathBuf>>,
@@ -49,31 +48,6 @@ pub struct Package {
     pub(crate) pre_uninstall_fn: fn(&Context) -> cu::Result<()>,
 }
 impl Package {
-    /// Create a stub package definition, used to fill spots in the registry array
-    /// for unsupported platforms
-    pub(crate) const fn stub(name: &'static str) -> Self {
-        Self {
-            enabled: false,
-            name,
-            binaries_fn: _stub::empty_bin_set,
-            linux_flavors: enumset::enum_set! {},
-            short_desc: "",
-            long_desc: "",
-            verify_fn: _stub::unsupported_platform,
-            install_fn: _stub::unsupported_platform,
-            uninstall_fn: _stub::unsupported_platform,
-            binary_dependencies_fn: _stub::empty_bin_set,
-            config_dependencies_fn: _stub::empty_pkg_set,
-            download_fn: _stub::ok,
-            build_fn: _stub::ok,
-            configure_fn: _stub::ok,
-            clean_fn: _stub::ok,
-            config_location_fn: _stub::ok_none,
-            backup_fn: _stub::ok,
-            restore_fn: _stub::ok,
-            pre_uninstall_fn: _stub::ok,
-        }
-    }
     /// Get the package id
     pub fn id(&self) -> PkgId {
         PkgId::from_str(self.name).unwrap()
@@ -163,23 +137,14 @@ impl Package {
         (self.download_fn)(ctx)
     }
 
-    /// Build the package - The expensive part of the install.
-    /// This should not have side effects besides modify the downloaded
-    /// package itself. It's not executed in parallel.
-    #[inline(always)]
-    #[cu::context("failed to build '{}'", ctx.pkg)]
-    pub fn build(&self, ctx: &Context) -> cu::Result<()> {
-        (self.build_fn)(ctx)
-    }
-
-    /// Install the package - after download and build
+    /// Install the package - extract the files after download
     #[inline(always)]
     #[cu::context("failed to install '{}'", ctx.pkg)]
     pub fn install(&self, ctx: &Context) -> cu::Result<()> {
         (self.install_fn)(ctx)
     }
 
-    /// Configure the package after installing
+    /// Configure the package after installing. build or copy any binaries
     pub fn configure(&self, ctx: &Context) -> cu::Result<()> {
         cu::check!(
             (self.configure_fn)(ctx),

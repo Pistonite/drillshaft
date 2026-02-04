@@ -1,4 +1,4 @@
-use corelib::{ItemMgr, hmgr};
+use corelib::{ItemMgr, VersionCache, hmgr};
 use cu::pre::*;
 use enumset::EnumSet;
 use registry::{Context, PkgId, Stage, Verified};
@@ -21,12 +21,35 @@ pub fn sync_pkgs(pkgs: EnumSet<PkgId>, installed: &mut InstallCache) -> cu::Resu
     if pkgs.is_empty() {
         return Ok(());
     }
-    let items = match ItemMgr::load() {
-        Ok(x) => x,
+    let mut items = match ItemMgr::load() {
+        Ok(x) => Some(x),
         Err(e) => {
             cu::error!("{e:?}");
             cu::warn!("marking all installed packages as dirty, as items failed to load");
+            cu::warn!("all installed packages will be re-configured");
             cu::warn!("this is a bug if this persists.");
+            None
+        }
+    };
+    let core_version_cache = VersionCache::new("registry::CORE_VERSION", registry::CORE_VERSION);
+    if let Some(items2) = &mut items {
+        if !core_version_cache
+            .is_uptodate()
+            .unwrap_or_default()
+            .unwrap_or_default()
+        {
+            cu::warn!("core version was bumped - all installed packages will be re-configured");
+            let bar = cu::progress("removing all config items").spawn();
+            items2.remove_all(Some(&bar))?;
+            items2.rebuild_items(Some(&bar))?;
+            bar.done();
+            items = None;
+        }
+    }
+    core_version_cache.update()?;
+    let items = match items {
+        Some(x) => x,
+        None => {
             for pkg in installed.pkgs {
                 installed.set_dirty(pkg, true);
             }
@@ -78,6 +101,7 @@ fn do_sync_package(
     let sync_type = match package.verify(&ctx)? {
         Verified::NotInstalled => SyncType::Full,
         Verified::NotUpToDate => SyncType::FullWithBackup,
+        Verified::NeedsConfig => SyncType::Config,
         Verified::UpToDate => {
             // if the pkg is not installed yet (meaning never configured),
             // configure it even if the binaries are installed already
@@ -123,10 +147,6 @@ fn do_sync_package(
         cu::progress!(bar, "downloading");
         ctx.stage.set(Stage::Download);
         package.download(&ctx)?;
-
-        cu::progress!(bar, "building");
-        ctx.stage.set(Stage::Build);
-        package.build(&ctx)?;
 
         cu::progress!(bar, "installing");
         ctx.stage.set(Stage::Install);

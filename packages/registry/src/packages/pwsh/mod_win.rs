@@ -3,10 +3,7 @@
 use crate::pre::*;
 
 register_binaries!("pwsh");
-
-pub fn config_dependencies() -> EnumSet<PkgId> {
-    enum_set! { PkgId::Shellutils }
-}
+config_dependencies!(Shellutils); // for vipwsh
 
 pub fn verify(ctx: &Context) -> cu::Result<Verified> {
     match cu::which("pwsh") {
@@ -35,8 +32,12 @@ pub fn verify(ctx: &Context) -> cu::Result<Verified> {
         ]
     );
     let is_preview = version.contains("preview");
-    let is_uptodate = !(Version(version.trim()).lt(metadata::pwsh::VERSION));
-    Ok(Verified::is_uptodate(is_preview && is_uptodate))
+    if !is_preview {
+        cu::debug!("preview version of pwsh is required for tilde expansion");
+        return Ok(Verified::NotUpToDate);
+    }
+    check_outdated!(&version, metadata::pwsh::VERSION);
+    Ok(Verified::UpToDate)
 }
 
 pub fn download(ctx: &Context) -> cu::Result<()> {

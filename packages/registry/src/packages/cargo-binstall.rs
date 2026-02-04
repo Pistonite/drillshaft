@@ -5,7 +5,7 @@ use crate::pre::*;
 register_binaries!("cargo-binstall");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    let info = check_installed_with_cargo!("cargo-binstall");
+    let info = check_cargo!("cargo-binstall");
     check_outdated!(&info.version, metadata::cargo_binstall::VERSION);
     Ok(Verified::UpToDate)
 }

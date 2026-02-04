@@ -17,6 +17,7 @@ tasks:
     - rm -f package.json package-lock.json pnpm-lock.yaml bun.lock
     - rm -rf node_modules
     - rm -rf update/temp
+    - rm -rf update-metadata-temp
 
   check:
     - task: cargo:clippy-all

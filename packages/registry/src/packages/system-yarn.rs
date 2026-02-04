@@ -4,7 +4,7 @@ use crate::pre::*;
 register_binaries!("yarn");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path!("yarn");
+    check_in_path!("yarn");
     Ok(Verified::UpToDate)
 }
 

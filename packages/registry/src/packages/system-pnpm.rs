@@ -4,7 +4,7 @@ use crate::pre::*;
 register_binaries!("pnpm");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path!("pnpm");
+    check_in_path!("pnpm");
     Ok(Verified::UpToDate)
 }
 

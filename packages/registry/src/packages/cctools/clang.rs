@@ -2,19 +2,19 @@ use crate::pre::*;
 
 pub fn verify(ctx: &Context) -> cu::Result<Verified> {
     if cfg!(windows) {
-        check_bin_in_path_and_shaft!("gcc", "system-cctools");
-        check_bin_in_path_and_shaft!("g++", "system-cctools");
-        check_bin_in_path_and_shaft!("clang", "system-cctools");
-        check_bin_in_path_and_shaft!("clang++", "system-cctools");
-        check_bin_in_path_and_shaft!("clang-format", "system-cctools");
-        check_bin_in_path_and_shaft!("clang-tidy", "system-cctools");
+        check_in_shaft!("gcc" || "system-cctools");
+        check_in_shaft!("g++" || "system-cctools");
+        check_in_shaft!("clang" || "system-cctools");
+        check_in_shaft!("clang++" || "system-cctools");
+        check_in_shaft!("clang-format" || "system-cctools");
+        check_in_shaft!("clang-tidy" || "system-cctools");
     } else {
-        check_bin_in_path!("gcc");
-        check_bin_in_path!("g++");
-        check_bin_in_path!("clang");
-        check_bin_in_path!("clang++");
-        check_bin_in_path!("clang-format");
-        check_bin_in_path!("clang-tidy");
+        check_in_path!("gcc");
+        check_in_path!("g++");
+        check_in_path!("clang");
+        check_in_path!("clang++");
+        check_in_path!("clang-format");
+        check_in_path!("clang-tidy");
     }
     let output = command_output!("clang", ["--version"]);
     let info = ClangInfo::parse(&output);

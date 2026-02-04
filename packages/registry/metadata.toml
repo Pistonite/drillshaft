@@ -1,3 +1,7 @@
+[core]
+# Bumping this version will re-configure all installed packages
+CONFIG_VERSION = "2"
+
 [_7z]
 REPO = "https://github.com/ip7z/7zip"
 VERSION = "25.01"
@@ -26,7 +30,7 @@ bash.VERSION = "5.3.9"
 bash_cmp.VERSION = "2.17.0"
 
 [shellutils]
-ALIAS_VERSION = "4"
+ALIAS_VERSION = "5"
 REPO = "https://github.com/Pistonite/shellutils"
 COMMIT = "331ee9d19e26ed82ca42b31513a042381ca8db3a"
 which.VERSION = "0.1.3"
@@ -96,7 +100,12 @@ VERSION = "3.4.0"
 SHA = "8ca33a60c791392d872b80d26c42f2bfa914a480f9eb2d7516d9f84373c36897"
 
 [terminal]
-'cfg(windows)'.CONFIG_VERSION = "7"
+'cfg(windows)'.CONFIG_VERSION = "8"
+clink.REPO = "https://github.com/chrisant996/clink"
+clink.VERSION = "1.9.11"
+clink.SHA = "61aacd20b126274a4a6bb1c1662e6fd6d6ba64ec86b7ed61df93cd4e631fa702"
+clink.URL = "https://github.com/chrisant996/clink/releases/download/v1.9.11/clink.1.9.11.760de7.zip"
+clink.WRAPPER_VERSION = "2"
 
 [volta]
 REPO = "https://github.com/volta-cli/volta"
@@ -148,3 +157,7 @@ REPO = "https://github.com/ninja-build/ninja"
 'cfg(target_os="linux")'.VERSION = "1.13.2"
 'cfg(all(windows,target_arch="aarch64"))'.SHA = "e52f0bdef9dfb1003229dbd6508a508c4073fd017247002adc66e5e806cb0391"
 'cfg(all(windows,target_arch="x86_64"))'.SHA = "07fc8261b42b20e71d1720b39068c2e14ffcee6396b76fb7a795fb460b78dc65"
+
+[starship]
+VERSION = "1.24.2"
+CFG_VERSION = "8"

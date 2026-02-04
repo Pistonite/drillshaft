@@ -1,0 +1,135 @@
+/// Verify a binary is in PATH. Takes the name of the executable.
+///
+/// Returns the path of the binary
+macro_rules! check_in_path {
+    ($l:literal) => {
+        match cu::which($l) {
+            Ok(p) => p,
+            Err(e) => {
+                cu::debug!("check_in_path failed: {e:?}");
+                return Ok(Verified::NotInstalled);
+            }
+        }
+    };
+}
+pub(crate) use check_in_path;
+
+/// Verify a binary is in PATH and is in the shaft's binary directory
+/// Takes the name of the executable.
+///
+/// Optionally, takes the name of the system package that can be used as alternative
+macro_rules! check_in_shaft {
+    ($bin:literal) => {{
+        match cu::which($bin) {
+            Err(e) => {
+                cu::debug!("check_in_shaft failed: {e:?}");
+                return Ok(Verified::NotInstalled);
+            }
+            Ok(path) => {
+                if path != hmgr::paths::binary(bin_name!($bin)) {
+                    cu::bail!(
+                        "found existing '{}' installed outside of shaft, please uninstall it first (at '{}'), or ensure the shaft bin has higher priority in PATH",
+                        $bin,
+                        path.display()
+                    );
+                }
+                path
+            }
+        }
+    }};
+    ($bin:literal || $system:literal) => {{
+        match cu::which($bin) {
+            Err(e) => {
+                cu::debug!("check_in_shaft failed: {e:?}");
+                return Ok(Verified::NotInstalled);
+            }
+            Ok(path) => {
+                if path != hmgr::paths::binary(bin_name!($bin)) {
+                    cu::bail!(
+                        "found existing '{}' installed outside of shaft, please uninstall it first (at '{}'), or ensure the shaft bin has higher priority in PATH; alternatively, use the {} package",
+                        $bin,
+                        path.display(),
+                        $system
+                    );
+                }
+                path
+            }
+        }
+    }};
+}
+pub(crate) use check_in_shaft;
+
+/// Check cargo install metadata for the crate or binary
+///
+/// ```rust,ignore
+/// check_cargo!("binary"); // crate name is the same as binary
+/// check_cargo!("binary" in crate "crate");
+/// ```
+macro_rules! check_cargo {
+    ($bin:literal) => {{ check_cargo!($bin in crate $bin) }};
+    ($bin:literal in crate $l:literal) => {{
+        if cu::which($bin).is_err() {
+            cu::debug!("check_cargo failed: binary not found");
+            return Ok(Verified::NotInstalled);
+        }
+        match epkg::cargo::installed_info($l)? {
+            None => {
+                cu::bail!(
+                    "current '{}' is not installed with cargo; please uninstall it first, so we can install the '{}' crate",
+                    $bin, $l
+                )
+            }
+            Some(info) => info,
+        }
+    }};
+}
+pub(crate) use check_cargo;
+
+/// Check actual version is at least as new as expected version
+macro_rules! check_outdated {
+    ($actual:expr , $expected:expr) => {{
+        let a = $actual;
+        let e = $expected;
+        if Version(a).lt(e) {
+            cu::debug!(
+                "check_outdated: for '{}': expected={}, actual={}",
+                stringify!($expected),
+                e,
+                a
+            );
+            return Ok(Verified::NotUpToDate);
+        }
+    }};
+}
+pub(crate) use check_outdated;
+
+/// Check the status of a sub `Verified`
+macro_rules! check_verified {
+    ($sub:expr) => {{
+        let v = $sub;
+        if v != Verified::UpToDate {
+            cu::debug!("check_verified: for '{}': {:?}", stringify!($sub), v);
+            return Ok(v);
+        }
+    }};
+}
+pub(crate) use check_verified;
+
+/// Check status if a version cache
+macro_rules! check_version_cache {
+    ($cache:expr) => {{
+        let cache = $cache;
+        match cache.is_uptodate()? {
+            None => {
+                cu::debug!("check_version_cache: '{}' is not installed", cache.id());
+                return Ok(Verified::NotInstalled);
+            }
+            Some(false) => {
+                cu::debug!("check_version_cache: '{}' is not up-to-date", cache.id());
+                return Ok(Verified::NeedsConfig);
+            }
+            _ => {}
+        }
+    }};
+}
+pub(crate) use check_version_cache;

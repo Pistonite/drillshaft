@@ -3,17 +3,15 @@
 use crate::pre::*;
 
 register_binaries!("node", "volta", "pnpm", "yarn");
-
-pub static ALIAS_VERSION: VersionCache =
-    VersionCache::new("node-alias", metadata::volta::ALIAS_VERSION);
+version_cache!(static ALIAS_VERSION = metadata::volta::ALIAS_VERSION);
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path_and_shaft!("volta");
-    check_bin_in_path_and_shaft!("node");
-    check_bin_in_path_and_shaft!("pnpm");
-    check_bin_in_path_and_shaft!("yarn");
-
-    Ok(Verified::is_uptodate(ALIAS_VERSION.is_uptodate()?))
+    check_in_shaft!("volta");
+    check_in_shaft!("node");
+    check_in_shaft!("pnpm");
+    check_in_shaft!("yarn");
+    check_version_cache!(ALIAS_VERSION);
+    Ok(Verified::UpToDate)
 }
 
 pub fn download(ctx: &Context) -> cu::Result<()> {

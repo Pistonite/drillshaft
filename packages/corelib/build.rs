@@ -79,6 +79,10 @@ members = [
         if entry.file_type().is_none_or(|x| !x.is_dir()) {
             return true;
         }
+        println!(
+            "cargo::rerun-if-changed={}",
+            entry.path().as_utf8().unwrap()
+        );
         cfg!(windows) || entry.file_name() != "__windows__"
     });
     builder.add_custom_ignore_filename(".corelibignore");

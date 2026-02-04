@@ -122,11 +122,10 @@ pub enum Stage {
     Verify = 0,
     Backup = 1,
     Download = 2,
-    Build = 3,
-    Install = 4,
-    Configure = 5,
-    Clean = 6,
-    Uninstall = 7,
+    Install = 3,
+    Configure = 4,
+    Clean = 5,
+    Uninstall = 6,
 }
 impl From<Stage> for u8 {
     fn from(stage: Stage) -> Self {
@@ -139,11 +138,10 @@ impl From<u8> for Stage {
             0 => Stage::Verify,
             1 => Stage::Backup,
             2 => Stage::Download,
-            3 => Stage::Build,
-            4 => Stage::Install,
-            5 => Stage::Configure,
-            6 => Stage::Clean,
-            7 => Stage::Uninstall,
+            3 => Stage::Install,
+            4 => Stage::Configure,
+            5 => Stage::Clean,
+            6 => Stage::Uninstall,
             _ => panic!("invalid Stage value: {value}"),
         }
     }

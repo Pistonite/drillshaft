@@ -47,7 +47,7 @@ pub fn run_str(input_str: &str, script: &str) -> cu::Result<String> {
             )
         }
         Err(e) => {
-            cu::bail!("error evaluating javascript: {e:?}");
+            cu::bail!("error evaluating javascript: {e}");
         }
     }
 }

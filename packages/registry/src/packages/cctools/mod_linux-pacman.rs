@@ -8,7 +8,7 @@ register_binaries!(
     "c++", "gcc", "g++",
     "c++filt", "objdump", "strings", "strip",
     "clang", "clang++", "clang-format", "clang-tidy", "clangd",
-    "make", "cmake", "ninja"
+    "make", "ninja"
 );
 
 pub fn binary_dependencies() -> EnumSet<BinId> {
@@ -17,11 +17,11 @@ pub fn binary_dependencies() -> EnumSet<BinId> {
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
     let v = check_installed_pacman_package!("gcc");
-    let v = v.split_once('+').map(|x|x.0).unwrap_or(&v);
+    let v = v.split_once('+').map(|x| x.0).unwrap_or(&v);
     check_outdated!(v, metadata::gnucc::gcc::VERSION);
 
     let v = check_installed_pacman_package!("binutils");
-    let v = v.split_once('+').map(|x|x.0).unwrap_or(&v);
+    let v = v.split_once('+').map(|x| x.0).unwrap_or(&v);
     check_outdated!(v, metadata::gnucc::binutils::VERSION);
 
     let v = check_installed_pacman_package!("gdb");
@@ -32,8 +32,6 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     check_outdated!(&v, metadata::clang::LLVM_VERSION);
     let v = check_installed_pacman_package!("lldb");
     check_outdated!(&v, metadata::clang::LLVM_VERSION);
-    let v = check_installed_pacman_package!("cmake");
-    check_outdated!(&v, metadata::cmake::VERSION);
     let v = check_installed_pacman_package!("ninja");
     check_outdated!(&v, metadata::ninja::VERSION);
     Ok(Verified::UpToDate)
@@ -55,6 +53,6 @@ pub fn uninstall(ctx: &Context) -> cu::Result<()> {
     epkg::pacman::uninstall("lldb", ctx.bar_ref())?;
     epkg::pacman::uninstall("clang", ctx.bar_ref())?;
     epkg::pacman::uninstall("llvm", ctx.bar_ref())?;
-    cu::warn!("not uninstalling GCC, cmake and ninja for your sanity");
+    cu::warn!("not uninstalling GCC and ninja for your sanity");
     Ok(())
 }

@@ -162,7 +162,6 @@ pub struct ModuleData {
     pub has_binary_dependencies: bool,
     pub has_config_dependencies: bool,
     pub has_download: bool,
-    pub has_build: bool,
     pub has_configure: bool,
     pub has_clean: bool,
     pub has_config_location: bool,
@@ -194,11 +193,24 @@ impl cu::Parse for ModuleData {
         for item in file_syntax.items {
             match item {
                 syn::Item::Macro(item) => {
-                    if item.mac.path.is_ident("register_binaries") {
-                        let body = item.mac.parse_body::<MacroBody>()?;
-                        for lit in body.items {
-                            binaries.insert(lit.value());
+                    let Some(ident) = item.mac.path.get_ident() else {
+                        continue;
+                    };
+                    let ident_str = ident.to_string();
+                    match ident_str.as_str() {
+                        "register_binaries" => {
+                            let body = item.mac.parse_body::<MacroBody>()?;
+                            for lit in body.items {
+                                binaries.insert(lit.value());
+                            }
                         }
+                        "binary_dependencies" => {
+                            export_idents.push("binary_dependencies".to_string());
+                        }
+                        "config_dependencies" => {
+                            export_idents.push("config_dependencies".to_string());
+                        }
+                        _ => {}
                     }
                 }
 
@@ -221,7 +233,6 @@ impl cu::Parse for ModuleData {
         let mut has_binary_dependencies = false;
         let mut has_config_dependencies = false;
         let mut has_download = false;
-        let mut has_build = false;
         let mut has_configure = false;
         let mut has_clean = false;
         let mut has_config_location = false;
@@ -233,7 +244,6 @@ impl cu::Parse for ModuleData {
                 "binary_dependencies" => has_binary_dependencies = true,
                 "config_dependencies" => has_config_dependencies = true,
                 "download" => has_download = true,
-                "build" => has_build = true,
                 "configure" => has_configure = true,
                 "clean" => has_clean = true,
                 "config_location" => has_config_location = true,
@@ -255,7 +265,6 @@ impl cu::Parse for ModuleData {
             has_binary_dependencies,
             has_config_dependencies,
             has_download,
-            has_build,
             has_configure,
             has_clean,
             has_config_location,

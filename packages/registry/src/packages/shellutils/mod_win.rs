@@ -12,62 +12,61 @@ register_binaries!(
     "wsclip"
 );
 
+binary_dependencies!(Scalar, _7z);
+
 mod common;
 mod wget;
 
-pub fn binary_dependencies() -> EnumSet<BinId> {
-    enum_set! { BinId::Scalar }
-}
-
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path_and_shaft!("perl");
-    check_bin_in_path_and_shaft!("gpg");
+    check_in_shaft!("perl");
+    check_in_shaft!("gpg");
     cu::check!(
         cu::which("curl"),
         "curl.exe is bundled in Windows; your Windows version might be too low"
     )?;
 
-    check_bin_in_path_and_shaft!("wget");
+    check_in_shaft!("wget");
     let v = wget::version_check()?;
     if v != Verified::UpToDate {
         return Ok(v);
     }
 
-    check_bin_in_path_and_shaft!("fzf");
+    check_in_shaft!("fzf");
     let v = command_output!("fzf", ["--version"]);
     let v = v.split_once(' ').map(|x| x.0).unwrap_or(&v);
     check_outdated!(v, metadata::fzf::VERSION);
 
-    check_bin_in_path_and_shaft!("jq");
+    check_in_shaft!("jq");
     let v = command_output!("jq", ["--version"]);
     let v = v.strip_prefix("jq-").unwrap_or(&v);
     check_outdated!(v, metadata::jq::VERSION);
 
-    check_bin_in_path_and_shaft!("task");
-    check_bin_in_path_and_shaft!("x");
+    check_in_shaft!("task");
+    check_in_shaft!("x");
     let v = command_output!("task", ["--version"]);
     check_outdated!(&v, metadata::task::VERSION);
 
-    let v = check_installed_with_cargo!("bat");
+    let v = check_cargo!("bat");
     check_outdated!(&v.version, metadata::bat::VERSION);
-    let v = check_installed_with_cargo!("dust", "du-dust");
+    let v = check_cargo!("dust" in crate "du-dust");
     check_outdated!(&v.version, metadata::dust::VERSION);
-    let v = check_installed_with_cargo!("find", "fd-find");
+    let v = check_cargo!("find" in crate "fd-find");
     check_outdated!(&v.version, metadata::fd::VERSION);
-    let v = check_installed_with_cargo!("websocat");
+    let v = check_cargo!("websocat");
     check_outdated!(&v.version, metadata::websocat::VERSION);
-    let v = check_installed_with_cargo!("zoxide");
+    let v = check_cargo!("zoxide");
     check_outdated!(&v.version, metadata::zoxide::VERSION);
-    let v = check_installed_with_cargo!("viopen");
+    let v = check_cargo!("viopen");
     check_outdated!(&v.version, metadata::shellutils::viopen::VERSION);
-    let v = check_installed_with_cargo!("n");
+    let v = check_cargo!("n");
     check_outdated!(&v.version, metadata::shellutils::n::VERSION);
-    let v = check_installed_with_cargo!("wsclip");
+    let v = check_cargo!("wsclip");
     check_outdated!(&v.version, metadata::shellutils::wsclip::VERSION);
-    let v = check_installed_with_cargo!("vipath");
+    let v = check_cargo!("vipath");
     check_outdated!(&v.version, metadata::shellutils::vipath::VERSION);
 
-    Ok(Verified::is_uptodate(common::ALIAS_VERSION.is_uptodate()?))
+    check_version_cache!(common::ALIAS_VERSION);
+    Ok(Verified::UpToDate)
 }
 pub fn download(ctx: &Context) -> cu::Result<()> {
     hmgr::download_file(
@@ -186,10 +185,20 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
 
     // zoxide needs to be after starship, recommended to be at the end
     let script = command_output!("zoxide", ["init", "powershell", "--cmd", "c"]);
-    ctx.add_priority_item(-1, hmgr::Item::Pwsh(script))?;
+    ctx.add_priority_item(-1, Item::pwsh(script))?;
+    let install_dir = ctx.install_dir();
+    let zoxide_c_cmd = install_dir.join("zoxide_c.cmd");
+    let zoxide_ci_cmd = install_dir.join("zoxide_ci.cmd");
+    cu::fs::write(&zoxide_c_cmd, include_bytes!("./zoxide_c.cmd"))?;
+    cu::fs::write(&zoxide_ci_cmd, include_bytes!("./zoxide_ci.cmd"))?;
+    ctx.add_item(Item::cmd(format!(
+        "doskey c=call \"{}\" $1\r\ndoskey ci=call \"{}\" $1",
+        zoxide_c_cmd.into_utf8()?,
+        zoxide_ci_cmd.into_utf8()?
+    )))?;
 
-    ctx.add_item(hmgr::Item::ShimBin(
-        bin_name!("vihosts").to_string(),
+    ctx.add_item(Item::shim_bin(
+        "vihosts",
         ShimCommand::target(cu::which("cmd")?.into_utf8()?).args([
             "/c",
             "viopen %SystemDrive%\\Windows\\System32\\drivers\\etc\\hosts",

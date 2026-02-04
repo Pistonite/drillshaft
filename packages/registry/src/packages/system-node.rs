@@ -4,8 +4,8 @@ use crate::pre::*;
 register_binaries!("node", "npm");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path!("node");
-    check_bin_in_path!("npm");
+    check_in_path!("node");
+    check_in_path!("npm");
     Ok(Verified::UpToDate)
 }
 

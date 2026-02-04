@@ -25,7 +25,7 @@ pub fn serialize_leaf_key_values(value: &toml::Table) -> (usize, String) {
         }
         write_ident(&key, &mut out);
         out.push_str(" = ");
-        write_value(&value, 0, &mut out);
+        write_value(value, 0, &mut out);
         out.push('\n');
         count += 1;
     }
@@ -119,8 +119,8 @@ fn extract_value(
         section_value = next.as_table_mut()?;
     }
     let mut parent = section_value;
-    for i in 0..entry_key.len() - 1 {
-        let next = parent.get_mut(&entry_key[i])?;
+    for entry in entry_key.iter().take(entry_key.len() - 1) {
+        let next = parent.get_mut(entry)?;
         parent = next.as_table_mut()?;
     }
 
@@ -167,7 +167,6 @@ fn write_value(value: &toml::Value, indent: usize, out: &mut String) {
         }
         _ => {
             // nothing we can do about value being too long
-            return;
         }
     }
 }

@@ -19,11 +19,7 @@ pub struct ConfigDef<T> {
 }
 impl<T> Clone for ConfigDef<T> {
     fn clone(&self) -> Self {
-        Self {
-            template_str: self.template_str,
-            migration_scripts: self.migration_scripts,
-            _marker: self._marker.clone(),
-        }
+        *self
     }
 }
 impl<T> Copy for ConfigDef<T> {}

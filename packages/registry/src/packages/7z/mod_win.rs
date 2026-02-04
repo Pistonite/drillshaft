@@ -6,14 +6,15 @@ mod version;
 register_binaries!("7z", "7zfm");
 
 pub fn verify(ctx: &Context) -> cu::Result<Verified> {
-    check_bin_in_path_and_shaft!("7z");
-    check_bin_in_path_and_shaft!("7zfm");
+    check_in_shaft!("7z");
+    check_in_shaft!("7zfm");
     if !uninstaller_path(ctx).exists() {
         // ensure the uninstaller exists in a good installation
         // so it can be uninstalled
+        cu::debug!("7z uninstaller does not exist");
         return Ok(Verified::NotUpToDate);
     }
-    version::check(metadata::_7z::VERSION)
+    version::check()
 }
 pub fn download(ctx: &Context) -> cu::Result<()> {
     hmgr::download_file(
@@ -27,7 +28,6 @@ pub fn download(ctx: &Context) -> cu::Result<()> {
 pub fn install(ctx: &Context) -> cu::Result<()> {
     ensure_terminated()?;
     cu::fs::make_dir(hmgr::paths::install_root())?;
-    ctx.move_install_to_old_if_exists()?;
 
     let installer = hmgr::paths::download("7z-installer.exe", download_url());
     // https://7-zip.org/faq.html
@@ -93,7 +93,7 @@ fn ensure_terminated() -> cu::Result<()> {
 }
 
 fn download_url() -> String {
-    let repo = metadata::_7z::VERSION;
+    let repo = metadata::_7z::REPO;
     let arch = if_arm!("arm64", else "x64");
     let version = metadata::_7z::VERSION;
     let version_no_dot = version.replace(".", "");

@@ -46,7 +46,7 @@ impl RegistryBuilder {
         writeln!(out, "#![allow(clippy::non_minimal_cfg)]")?;
         writeln!(out, "use enumset::{{EnumSetType, EnumSet, enum_set}};")?;
         writeln!(out, "use enum_map::Enum;")?;
-        writeln!(out, "use super::_stub;")?;
+        writeln!(out, "mod _stub {{ {} }}", include_str!("./package_stub.rs"))?;
 
         // if the package name contains invalid character,
         // there will be build error in the generated code.
@@ -251,7 +251,6 @@ fn build_metadata_for_module(
         "empty_pkg_set"
     );
     write_optional_function!(has_download, "download", "ok");
-    write_optional_function!(has_build, "build", "ok");
     write_optional_function!(has_configure, "configure", "ok");
     write_optional_function!(has_clean, "clean", "ok");
     write_optional_function!(has_config_location, "config_location", "ok_none");
@@ -510,7 +509,6 @@ fn build_package_modules(
                 }
             }
             write_optional_function!("download", has_download);
-            write_optional_function!("build", has_build);
             write_optional_function!("configure", has_configure);
             write_optional_function!("clean", has_clean);
             write_optional_function!("backup", has_backup_restore);

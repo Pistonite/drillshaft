@@ -17,6 +17,7 @@ pub struct ItemMgr {
     bash_dirty: bool,
     zsh_dirty: bool,
     pwsh_dirty: bool,
+    cmd_dirty: bool,
 }
 
 impl ItemMgr {
@@ -33,6 +34,7 @@ impl ItemMgr {
                 bash_dirty: true,
                 zsh_dirty: true,
                 pwsh_dirty: true,
+                cmd_dirty: true,
             });
         };
         let items = match json::parse(&items) {
@@ -53,6 +55,7 @@ impl ItemMgr {
             bash_dirty: false,
             zsh_dirty: false,
             pwsh_dirty: false,
+            cmd_dirty: false,
         })
     }
     pub fn skip_reinvocation(&mut self, skip: bool) {
@@ -69,18 +72,17 @@ impl ItemMgr {
         }
         match &entry.item {
             Item::UserEnvVar(_, _) => {
-                self.bash_dirty = true;
-                self.zsh_dirty = true;
+                self.set_all_shells_dirty();
             }
             Item::UserPath(_) => {
-                self.bash_dirty = true;
-                self.zsh_dirty = true;
+                self.set_all_shells_dirty();
             }
             Item::LinkBin(_, _) => {}
             Item::ShimBin(_, _) => self.shim_dirty = true,
             Item::Pwsh(_) => self.pwsh_dirty = true,
             Item::Bash(_) => self.bash_dirty = true,
             Item::Zsh(_) => self.zsh_dirty = true,
+            Item::Cmd(_) => self.cmd_dirty = true,
         }
         self.dirty = true;
         self.items.push(entry);
@@ -91,23 +93,36 @@ impl ItemMgr {
         package: &str,
         bar: Option<&Arc<cu::ProgressBar>>,
     ) -> cu::Result<()> {
+        self.remove_package_internal(Some(package), bar)
+    }
+
+    pub fn remove_all(&mut self, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
+        self.remove_package_internal(None, bar)
+    }
+
+    fn remove_package_internal(
+        &mut self,
+        package: Option<&str>, // none for removing all
+        bar: Option<&Arc<cu::ProgressBar>>,
+    ) -> cu::Result<()> {
         let mut bin_to_remove = vec![];
         let mut _env_to_remove = BTreeMap::new();
         let mut _path_to_remove = BTreeSet::new();
-        self.items.retain(|entry| {
-            if entry.package != package {
+
+        // take out items to workaround borrow check
+        let mut items = std::mem::take(&mut self.items);
+        items.retain(|entry| {
+            if package != Some(&entry.package) {
                 return true;
             }
             match &entry.item {
                 Item::UserEnvVar(k, v) => {
                     _env_to_remove.insert(k.to_string(), v.to_string());
-                    self.bash_dirty = true;
-                    self.zsh_dirty = true;
+                    self.set_all_shells_dirty();
                 }
                 Item::UserPath(path) => {
                     _path_to_remove.insert(path.to_string());
-                    self.bash_dirty = true;
-                    self.zsh_dirty = true;
+                    self.set_all_shells_dirty();
                 }
                 Item::LinkBin(bin, _) => bin_to_remove.push(bin.to_string()),
                 Item::ShimBin(bin, _) => {
@@ -117,10 +132,12 @@ impl ItemMgr {
                 Item::Pwsh(_) => self.pwsh_dirty = true,
                 Item::Bash(_) => self.bash_dirty = true,
                 Item::Zsh(_) => self.zsh_dirty = true,
+                Item::Cmd(_) => self.cmd_dirty = true,
             }
             self.dirty = true;
             false
         });
+        self.items = items;
 
         if !bin_to_remove.is_empty() {
             let bar = cu::progress("removing old links")
@@ -170,6 +187,14 @@ impl ItemMgr {
         self.reinvocation_needed = true;
     }
 
+    pub fn set_all_shells_dirty(&mut self) {
+        self.dirty = true;
+        self.bash_dirty = true;
+        self.zsh_dirty = true;
+        self.pwsh_dirty = true;
+        self.cmd_dirty = true;
+    }
+
     #[cu::context("failed to build installed items")]
     pub fn rebuild_items(&mut self, bar: Option<&Arc<cu::ProgressBar>>) -> cu::Result<()> {
         if !self.dirty {
@@ -192,6 +217,9 @@ impl ItemMgr {
         }
         if cfg!(windows) && self.pwsh_dirty {
             self.rebuild_pwsh()?;
+        }
+        if cfg!(windows) && self.cmd_dirty {
+            self.rebuild_cmd()?;
         }
         if self.shim_dirty {
             self.rebuild_shim(bar)?;
@@ -369,6 +397,26 @@ impl ItemMgr {
         }
         cu::fs::write(hmgr::paths::init_ps1(), &out)?;
         self.pwsh_dirty = false;
+        Ok(())
+    }
+
+    #[cu::context("failed to build dosbatch init")]
+    fn rebuild_cmd(&mut self) -> cu::Result<()> {
+        use std::fmt::Write as _;
+        let mut out = include_str!("init.cmd").to_string();
+        let mut current_package = "";
+        for entry in &self.items {
+            let Item::Cmd(script) = &entry.item else {
+                continue;
+            };
+            if entry.package != current_package {
+                current_package = &entry.package;
+                let _ = writeln!(out, "REM # == {current_package} >>>>>");
+            }
+            let _ = writeln!(out, "{script}");
+        }
+        cu::fs::write(hmgr::paths::init_cmd(), &out)?;
+        self.cmd_dirty = false;
         Ok(())
     }
 
@@ -602,6 +650,9 @@ pub enum Item {
     /// Powershell script added to the init.pwsh script
     Pwsh(String),
 
+    /// Dosbatch script added to the init.cmd script
+    Cmd(String),
+
     /// Bash script added to init.bash script
     ///
     /// Use UserEnvVar or UserPath to modify environment variables and PATHs
@@ -639,6 +690,11 @@ impl Item {
     #[inline(always)]
     pub fn pwsh(script: impl Into<String>) -> Self {
         Self::Pwsh(script.into())
+    }
+
+    #[inline(always)]
+    pub fn cmd(script: impl Into<String>) -> Self {
+        Self::Cmd(script.into())
     }
 
     #[inline(always)]

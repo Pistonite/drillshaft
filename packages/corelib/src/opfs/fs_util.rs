@@ -1,4 +1,4 @@
-use std::io::{Cursor, Read};
+use std::io::{BufRead, Cursor, Read};
 use std::path::Path;
 #[cfg(windows)]
 use std::path::PathBuf;
@@ -195,6 +195,7 @@ fn unarchive_impl(archive_path: &Path, out_dir: &Path, clean: bool) -> cu::Resul
         TarGz,
         TarXz,
         Zip,
+        Use7z,
     }
     fn is_second_extension_tar(path: &Path) -> bool {
         let mut path = path.to_path_buf();
@@ -205,6 +206,19 @@ fn unarchive_impl(archive_path: &Path, out_dir: &Path, clean: bool) -> cu::Resul
         let ext = ext.to_ascii_lowercase();
         ext == "tar"
     }
+    let file_size = {
+        let metadata = archive_path.metadata()?;
+        #[cfg(unix)]
+        use std::os::unix::fs::MetadataExt;
+        #[cfg(windows)]
+        use std::os::windows::fs::MetadataExt;
+        #[cfg(unix)]
+        let file_size = metadata.size();
+        #[cfg(windows)]
+        let file_size = metadata.file_size();
+        file_size
+    };
+    let is_big_file = file_size >= 50_000_000;
     let format = match ext.as_bytes() {
         b"gz" => {
             if !is_second_extension_tar(archive_path) {
@@ -220,52 +234,92 @@ fn unarchive_impl(archive_path: &Path, out_dir: &Path, clean: bool) -> cu::Resul
         }
         b"tgz" => Format::TarGz,
         b"txz" => Format::TarXz,
-        b"tar" => Format::Tar,
-        b"zip" => Format::Zip,
+        b"tar" => {
+            if is_big_file {
+                Format::Use7z
+            } else {
+                Format::Tar
+            }
+        }
+        b"zip" => {
+            if is_big_file {
+                Format::Use7z
+            } else {
+                Format::Zip
+            }
+        }
         _ => {
-            cu::bail!("unknown archive extension: {ext}")
+            cu::debug!("unsupported archive extension: {ext}, trying to spawn 7z to deal with it");
+            Format::Use7z
         }
     };
-    let archive_bytes = cu::fs::read(archive_path)?;
     match format {
         Format::TarGz => {
-            untargz_bytes(&archive_bytes, out_dir, clean)?;
+            let mut archive_bytes = cu::fs::reader(archive_path)?;
+            untargz_read(&mut archive_bytes, out_dir, clean)?;
         }
         Format::TarXz => {
-            untarxz_bytes(&archive_bytes, out_dir, clean)?;
+            let mut archive_bytes = cu::fs::reader(archive_path)?;
+            untarxz_read(&mut archive_bytes, out_dir, clean)?;
         }
         Format::Tar => {
-            untar_bytes(&archive_bytes, out_dir, clean)?;
+            let mut archive_bytes = cu::fs::reader(archive_path)?;
+            untar_read(&mut archive_bytes, out_dir, clean)?;
         }
         Format::Zip => {
+            let archive_bytes = cu::fs::read(archive_path)?;
             unzip_bytes(&archive_bytes, out_dir, clean)?;
+        }
+        Format::Use7z => {
+            let exe = cu::which("7z")?;
+            let command = if cfg!(windows) {
+                // on windows, spawning 7z directly is diffcult
+                // to do path escape, so we wrap it with powershell
+                let script = format!(
+                    "& {} x -y {} -o{}",
+                    quote_path(&exe)?,
+                    quote_path(archive_path)?,
+                    quote_path(out_dir)?,
+                );
+                cu::which("powershell.exe")?
+                    .command()
+                    .args(["-NoLogo", "-c", &script])
+            } else {
+                let out_dir = quote_path(out_dir)?;
+                cu::which("7z")?.command().add(cu::args![
+                    "x",
+                    "-y",
+                    archive_path,
+                    format!("-o{out_dir}")
+                ])
+            };
+            let file_name = archive_path.file_name_str().unwrap_or("(unknown)");
+            let (child, bar, _) = command
+                .stdoe(
+                    cu::pio::spinner(format!("extracting {file_name} with 7z"))
+                        .configure_spinner(|x| x.keep(false)),
+                )
+                .stdin_null()
+                .spawn()?;
+            child.wait_nz()?;
+            bar.done();
         }
     }
     Ok(())
 }
 
 #[cu::context("failed to unpack targz bytes")]
-pub fn untargz_bytes(archive_bytes: &[u8], out_dir: &Path, clean: bool) -> cu::Result<()> {
-    if clean {
-        cu::fs::make_dir_empty(out_dir)?;
-    }
-    let mut archive = TarArchive::new(GzDecoder::new(archive_bytes));
-    archive.unpack(out_dir)?;
-    Ok(())
+pub fn untargz_read(archive_bytes: impl BufRead, out_dir: &Path, clean: bool) -> cu::Result<()> {
+    untar_read(GzDecoder::new(archive_bytes), out_dir, clean)
 }
 
 #[cu::context("failed to unpack tarxz bytes")]
-pub fn untarxz_bytes(archive_bytes: &[u8], out_dir: &Path, clean: bool) -> cu::Result<()> {
-    if clean {
-        cu::fs::make_dir_empty(out_dir)?;
-    }
-    let mut archive = TarArchive::new(XzDecoder::new(archive_bytes));
-    archive.unpack(out_dir)?;
-    Ok(())
+pub fn untarxz_read(archive_bytes: impl BufRead, out_dir: &Path, clean: bool) -> cu::Result<()> {
+    untar_read(XzDecoder::new(archive_bytes), out_dir, clean)
 }
 
 #[cu::context("failed to unpack tar bytes")]
-pub fn untar_bytes(archive_bytes: &[u8], out_dir: &Path, clean: bool) -> cu::Result<()> {
+pub fn untar_read(archive_bytes: impl Read, out_dir: &Path, clean: bool) -> cu::Result<()> {
     if clean {
         cu::fs::make_dir_empty(out_dir)?;
     }
@@ -280,7 +334,7 @@ pub fn unzip_bytes(archive_bytes: &[u8], out_dir: &Path, clean: bool) -> cu::Res
         cu::fs::make_dir_empty(out_dir)?;
     }
     let mut archive = ZipArchive::new(Cursor::new(archive_bytes))?;
-    archive.extract_unwrapped_root_dir(out_dir, zip::read::root_dir_common_filter)?;
+    archive.extract(out_dir)?; // to be consistent with 7z, we do not unwrap root dir
     Ok(())
 }
 

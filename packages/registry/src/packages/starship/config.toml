@@ -1,0 +1,69 @@
+[[section]]
+comment = """
+!!!
+This is not the actual starship config.toml. These are toggles by shaft to generate
+the config file for starship.
+!!!
+"""
+[[section]]
+key = ["git"]
+comment = "Show/hide git properties"
+children = [
+    {
+        comment = "Enable showing current git branch (or commit hash when detached)",
+        key = ["branch"],
+        value = true,
+    },
+    {
+        comment = "Enable showing current git tag if any",
+        key = ["tag"],
+        value = true,
+    },
+    {
+        comment = "Enable showing current git state (rebasing, merging, etc)",
+        key = ["state"],
+        value = true,
+    },
+    {
+        comment = "Enable showing current git status (ahead, behind, etc - can be slow - disable if causing timeout)",
+        key = ["status"],
+        value = true,
+    },
+]
+
+[[section]]
+key = ["toolchains"]
+comment = "Show/hide information for different language tool/toolchains"
+children = [
+    { key = ["cmake"], value = true, },
+    { key = ["rust"], value = true, },
+    { key = ["nodejs"], value = true, },
+    { key = ["python"], value = true, },
+]
+
+[[section]]
+key = ["toolchains-cmd"]
+comment = "Override `toolchains` for Windows Command Prompt (default is inherit from toolchains if not specified)"
+children = [
+    { key = ["cmake"], value = true, },
+    { key = ["rust"], value = true, },
+    { key = ["nodejs"], value = true, },
+    { key = ["python"], value = true, },
+]
+
+
+# -- may be added in the future
+
+#[docker_context]
+#symbol = " "
+
+#[golang]
+#symbol = " "
+#format = "[$symbol($version )]($style)"
+#symbol = " "
+#style = "bright-cyan"
+
+#[java]
+#symbol = " "
+
+# also zig

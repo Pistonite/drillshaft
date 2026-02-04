@@ -4,7 +4,7 @@ use crate::pre::*;
 register_binaries!("python");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path!("python");
+    check_in_path!("python");
     Ok(Verified::UpToDate)
 }
 

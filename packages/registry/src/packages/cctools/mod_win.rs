@@ -9,7 +9,7 @@ register_binaries!(
     "c++", "gcc", "g++",
     "c++filt", "objdump", "strings", "strip",
     "clang", "clang++", "clang-format", "clang-tidy", "clangd",
-    "make", "cmake", "ninja"
+    "make", "ninja"
 );
 
 #[rustfmt::skip]
@@ -45,35 +45,16 @@ static CLANG_LLVM_LINK_DLL: &[&str] = &[
     "libclang"
 ];
 
-mod clang;
+binary_dependencies!(Scalar, Python, Cmake);
 
-pub fn binary_dependencies() -> EnumSet<BinId> {
-    enum_set! { BinId::Scalar | BinId::Python }
-}
+mod clang;
 pub fn verify(ctx: &Context) -> cu::Result<Verified> {
     let v = clang::verify(ctx)?;
     if v != Verified::UpToDate {
         return Ok(v);
     }
 
-    check_bin_in_path_and_shaft!("cmake", "system-cctools");
-    let v = command_output!("cmake", ["--version"]);
-    let mut v = v.split_whitespace();
-    if v.next() != Some("cmake") {
-        cu::warn!("failed to parse cmake version");
-        return Ok(Verified::NotUpToDate);
-    }
-    if v.next() != Some("version") {
-        cu::warn!("failed to parse cmake version");
-        return Ok(Verified::NotUpToDate);
-    }
-    let Some(v) = v.next() else {
-        cu::warn!("failed to parse cmake version");
-        return Ok(Verified::NotUpToDate);
-    };
-    check_outdated!(v, metadata::cmake::VERSION);
-
-    check_bin_in_path_and_shaft!("ninja", "system-cctools");
+    check_in_shaft!("ninja" || "system-cctools");
     let v = command_output!("ninja", ["--version"]);
     check_outdated!(&v, metadata::ninja::VERSION);
 
@@ -88,7 +69,6 @@ pub fn download(ctx: &Context) -> cu::Result<()> {
         metadata::llvm_mingw::SHA,
         ctx.bar(),
     )?;
-    hmgr::download_file("cmake.zip", cmake_url(), metadata::cmake::SHA, ctx.bar())?;
     hmgr::download_file("ninja.zip", ninja_url(), metadata::ninja::SHA, ctx.bar())?;
     Ok(())
 }
@@ -109,15 +89,14 @@ fn llvm_release_name() -> String {
 fn llvm_mingw_url() -> String {
     let repo = metadata::llvm_mingw::REPO;
     let tag = metadata::llvm_mingw::TAG;
-    let arch = if_arm!("aarch64", else "x86_64");
-    format!("{repo}/releases/download/{tag}/llvm-mingw-{tag}-ucrt-{arch}.zip")
+    let release_name = llvm_mingw_release_name();
+    format!("{repo}/releases/download/{tag}/{release_name}.zip")
 }
 
-fn cmake_url() -> String {
-    let repo = metadata::cmake::REPO;
-    let version = metadata::cmake::VERSION;
-    let arch = if_arm!("arm64", else "x86_64");
-    format!("{repo}/releases/download/v{version}/cmake-{version}-windows-{arch}.zip")
+fn llvm_mingw_release_name() -> String {
+    let tag = metadata::llvm_mingw::TAG;
+    let arch = if_arm!("aarch64", else "x86_64");
+    format!("llvm-mingw-{tag}-ucrt-{arch}")
 }
 
 fn ninja_url() -> String {
@@ -138,7 +117,9 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
             .spawn();
         let llvm_dir = install_dir.join("llvm");
         if llvm_dir.exists() {
+            let bar = bar.child("cleaning existing llvm directory").spawn();
             cu::fs::rec_remove(&llvm_dir)?;
+            bar.done();
         }
         let clang_zip = hmgr::paths::download("llvm.txz", llvm_url());
         opfs::unarchive(&clang_zip, &install_dir, true)?;
@@ -154,19 +135,10 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
             .keep(true)
             .parent(ctx.bar())
             .spawn();
-        let llvm_dir = install_dir.join("llvm-mingw");
         let clang_zip = hmgr::paths::download("llvm-mingw.zip", llvm_mingw_url());
-        opfs::unarchive(&clang_zip, llvm_dir, true)?;
-        bar.done();
-    }
-    {
-        let bar = cu::progress("unpacking cmake")
-            .keep(true)
-            .parent(ctx.bar())
-            .spawn();
-        let cmake_dir = install_dir.join("cmake");
-        let cmake_zip = hmgr::paths::download("cmake.zip", cmake_url());
-        opfs::unarchive(&cmake_zip, cmake_dir, true)?;
+        opfs::unarchive(&clang_zip, &install_dir, true)?;
+        let llvm_dir = install_dir.join("llvm-mingw");
+        cu::fs::rename(install_dir.join(llvm_mingw_release_name()), llvm_dir)?;
         bar.done();
     }
     {
@@ -188,7 +160,6 @@ pub fn uninstall(_: &Context) -> cu::Result<()> {
 }
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
-    configure_cmake(ctx)?;
     configure_ninja(ctx)?;
     let bar = cu::progress("linking toolchain executables")
         .parent(ctx.bar())
@@ -432,19 +403,6 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
 
     bar.done();
 
-    Ok(())
-}
-
-fn configure_cmake(ctx: &Context) -> cu::Result<()> {
-    let install_dir = ctx.install_dir();
-    let cmake_dir = install_dir.join("cmake");
-    let cmake_bin_dir = cmake_dir.join("bin");
-    for file_name in ["cmake", "cmcldeps", "cpack", "ctest", "cmake-gui"] {
-        let file_name = bin_name!(file_name);
-        let from = hmgr::paths::binary(&file_name).into_utf8()?;
-        let to = cmake_bin_dir.join(file_name).into_utf8()?;
-        ctx.add_item(Item::link_bin(from, to))?;
-    }
     Ok(())
 }
 

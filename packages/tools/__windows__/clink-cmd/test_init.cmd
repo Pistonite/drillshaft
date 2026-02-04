@@ -1,0 +1,2 @@
+
+echo test init script

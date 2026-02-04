@@ -2,28 +2,26 @@
 
 use crate::pre::*;
 
-static CFG_VERSION: VersionCache =
-    VersionCache::new("terminal", metadata::terminal::CONFIG_VERSION);
-static FONT_VERSION: VersionCache =
-    VersionCache::new("hack-nerd-font", metadata::hack_font::VERSION);
+register_binaries!("clink-cmd");
+version_cache!(static CFG_VERSION = metadata::terminal::CONFIG_VERSION);
+binary_dependencies!(Cmake); // used to compile clink-cmd
+config_dependencies!(Pwsh, Git);
 
-pub fn config_dependencies() -> EnumSet<PkgId> {
-    enum_set! { PkgId::Pwsh }
-}
+mod windows_clink;
+mod windows_font;
 
-pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path!("wt");
-    let is_config_uptodate = CFG_VERSION.is_uptodate()?;
-    Ok(Verified::is_uptodate(is_config_uptodate))
+pub fn verify(ctx: &Context) -> cu::Result<Verified> {
+    check_in_path!("wt");
+    check_verified!(windows_font::verify()?);
+    check_verified!(windows_clink::verify(ctx)?);
+    check_version_cache!(CFG_VERSION);
+
+    Ok(Verified::UpToDate)
 }
 
 pub fn download(ctx: &Context) -> cu::Result<()> {
-    hmgr::download_file(
-        "hack-nerd-font.zip",
-        font_download_url(),
-        metadata::hack_font::SHA,
-        ctx.bar(),
-    )?;
+    windows_font::download(ctx)?;
+    windows_clink::download(ctx)?;
     Ok(())
 }
 
@@ -34,27 +32,32 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
         opfs::ensure_terminated("WindowsTerminal.exe")?;
         epkg::winget::install("Microsoft.WindowsTerminal", ctx.bar_ref())?;
     }
+    cu::check!(
+        windows_font::install(&setting_json()?),
+        "failed to install terminal font"
+    )?;
+    cu::check!(windows_clink::install(ctx), "failed to install clink")?;
     Ok(())
 }
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
-    cu::info!("installing hack nerd font...");
-    cu::check!(configure_font(), "failed to install hack nerd font")?;
-
+    cu::check!(windows_clink::configure(ctx), "failed to configure clink")?;
     let setting_path = setting_json()?;
     let config = cu::check!(
         json::parse::<json::Value>(&cu::fs::read_string(&setting_path)?),
         "failed to parse config for windows terminal"
     )?;
-    let input = json! {
+    let input = json! (
         {
             "config": config,
             "meta": {
-            "pwsh_installed": ctx.is_installed(PkgId::Pwsh),
-            "install_dir": hmgr::paths::install_dir("pwsh").as_utf8()?,
+                "pwsh_installed": ctx.is_installed(PkgId::Pwsh),
+                "install_dir": hmgr::paths::install_dir("pwsh").as_utf8()?,
+                "cmd_bin": cu::which("cmd.exe")?.as_utf8()?,
+                "clink_cmd_bin": hmgr::paths::binary(bin_name!("clink-cmd")),
+            }
         }
-    }
-        };
+    );
     let config = cu::check!(
         jsexe::run(&input, include_str!("./config.js")),
         "failed to configure windows terminal"
@@ -62,107 +65,6 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     cu::fs::write_json_pretty(setting_path, &config)?;
     CFG_VERSION.update()?;
 
-    Ok(())
-}
-
-fn configure_font() -> cu::Result<()> {
-    let zip_path = hmgr::paths::download("hack-nerd-font.zip", font_download_url());
-    let temp_dir = hmgr::paths::temp_dir("hack-nerd-font");
-    opfs::unarchive(&zip_path, &temp_dir, true)?;
-
-    // reset the font to Consolas
-    let setting_path = setting_json()?;
-    let config = cu::check!(
-        json::parse::<json::Value>(&cu::fs::read_string(&setting_path)?),
-        "failed to parse config for windows terminal"
-    )?;
-    let config = cu::check!(
-        jsexe::run(&config, include_str!("./reset_font.js")),
-        "failed to reset font for windows terminal"
-    )?;
-    cu::fs::write_json_pretty(setting_path, &config)?;
-
-    // create fonts folder
-    let fonts_folder = {
-        let mut dir = PathBuf::from(cu::env_var("LOCALAPPDATA")?);
-        dir.extend(["Microsoft", "Windows", "Fonts"]);
-        cu::fs::make_dir(&dir)?;
-        dir
-    };
-
-    // collect font files first
-    let mut font_files = Vec::new();
-    for entry in cu::fs::read_dir(&temp_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("ttf"))
-        {
-            let file_name = path.file_name().unwrap();
-            let dest = fonts_folder.join(file_name);
-            font_files.push((
-                path.file_stem()
-                    .expect("no file stem")
-                    .as_utf8()?
-                    .to_string(),
-                path,
-                dest,
-            ));
-        }
-    }
-
-    // delete existing font registry entries
-    let del_commands: Vec<String> = font_files
-        .iter()
-        .map(|(name, _, _)| {
-            format!(
-                r#"Remove-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name '{name} (TrueType)' -ErrorAction SilentlyContinue"#
-            )
-        })
-        .collect();
-    let script = del_commands.join("\n");
-    let status = cu::which("powershell")?
-        .command()
-        .args(["-NoLogo", "-NoProfile", "-c", &script])
-        .stdout(cu::lv::D)
-        .stderr(cu::lv::E)
-        .stdin_null()
-        .wait()?;
-    if !status.success() {
-        cu::warn!("powershell returned {status}, when removing font entries from registry");
-    }
-
-    // copy all *.ttf files to fonts folder
-    for (_, path, dest) in &font_files {
-        if let Err(e) = cu::fs::copy(path, dest) {
-            cu::hint!(
-                "failed to copy font file - if this is a permission error, close all terminal processes, and retry"
-            );
-            cu::rethrow!(e);
-        }
-    }
-
-    // register fonts in registry using powershell
-    let reg_commands: Vec<String> = font_files
-        .iter()
-        .map(|(name, _, dest)| {
-            let dest = dest.as_utf8().expect("invalid utf8 path");
-            format!(
-                r#"Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -Name '{name} (TrueType)' -Value '{dest}'"#
-            )
-        })
-        .collect();
-    let script = reg_commands.join("\n");
-    cu::which("powershell")?
-        .command()
-        .args(["-NoLogo", "-NoProfile", "-c", &script])
-        .stdout(cu::lv::D)
-        .stderr(cu::lv::E)
-        .stdin_null()
-        .wait_nz()?;
-
-    FONT_VERSION.update()?;
     Ok(())
 }
 
@@ -180,10 +82,4 @@ fn setting_json() -> cu::Result<PathBuf> {
         "settings.json",
     ]);
     Ok(p)
-}
-
-fn font_download_url() -> String {
-    let repo = metadata::hack_font::REPO;
-    let version = metadata::hack_font::VERSION;
-    format!("{repo}/releases/download/v{version}/Hack.zip")
 }

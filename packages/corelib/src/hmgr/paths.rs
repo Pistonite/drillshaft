@@ -75,6 +75,7 @@ home! {
     items_root:            "items",
     items_config_json:        items_root / "config.json",
     init_ps1:                 items_root / "init.ps1",
+    init_cmd:                 items_root / "init.cmd",
     init_bash:                items_root / "init.bash",
     init_zsh:                 items_root / "init.zsh",
     shim_binary:              items_root / (crate::bin_name!("shaftim")),

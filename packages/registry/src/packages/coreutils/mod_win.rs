@@ -15,28 +15,25 @@ pub fn binary_dependencies() -> EnumSet<BinId> {
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
     eza::verify()?;
-    check_bin_in_path_and_shaft!("diff");
-    check_bin_in_path_and_shaft!("diff3");
-    check_bin_in_path_and_shaft!("cmp");
-    // not checking in shaft because Windows has System32/find.exe
-    check_bin_in_path!("find");
-    check_bin_in_path_and_shaft!("gzip");
-    check_bin_in_path_and_shaft!("sed");
-    check_bin_in_path_and_shaft!("grep");
-    check_bin_in_path_and_shaft!("zip");
-    check_bin_in_path_and_shaft!("unzip");
+    check_in_shaft!("diff");
+    check_in_shaft!("diff3");
+    check_in_shaft!("cmp");
+    // not checking find because of System32\find.exe
+    check_in_shaft!("gzip");
+    check_in_shaft!("sed");
+    check_in_shaft!("grep");
+    check_in_shaft!("zip");
+    check_in_shaft!("unzip");
     cu::check!(
         cu::which("tar"),
         "tar.exe is bundled in Windows; your Windows version might be too low"
     )?;
-    let which_info = check_installed_with_cargo!("which");
-    check_outdated!(&which_info.version, metadata::shellutils::which::VERSION);
-    let coreutils_info = check_installed_with_cargo!("coreutils");
-    check_outdated!(
-        &coreutils_info.version,
-        metadata::coreutils::uutils::VERSION
-    );
-    Ok(Verified::is_uptodate(common::ALIAS_VERSION.is_uptodate()?))
+    let v = check_cargo!("which");
+    check_outdated!(&v.version, metadata::shellutils::which::VERSION);
+    let v = check_cargo!("coreutils");
+    check_outdated!(&v.version, metadata::coreutils::uutils::VERSION);
+    check_version_cache!(common::ALIAS_VERSION);
+    Ok(Verified::UpToDate)
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {

@@ -4,28 +4,25 @@ use crate::pre::*;
 
 mod version;
 
-static ALIAS_VERSION: VersionCache = VersionCache::new("git-alias", metadata::git::ALIAS_VERSION);
+version_cache!(static ALIAS_VERSION = metadata::git::ALIAS_VERSION);
 
 register_binaries!("git", "scalar", "bash");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path!("git");
+    check_in_path!("git");
     // we don't check if the bash is in shaft, because WSL
     // litters a bash.exe into PATH (bruh)
-    check_bin_in_path!("bash");
+    check_in_path!("bash");
     let version = command_output!("git", ["--version"]);
     if !version.contains("vfs") {
         cu::bail!(
             "current 'git' is not the vfs version (microsoft.git); please uninstall it or use the 'system-git' package"
         );
     }
-    check_bin_in_path!("scalar");
-    let v = version::verify(metadata::git::VERSION)?;
-    if v != Verified::UpToDate {
-        return Ok(v);
-    }
-
-    Ok(Verified::is_uptodate(ALIAS_VERSION.is_uptodate()?))
+    check_in_path!("scalar");
+    check_verified!(version::verify()?);
+    check_version_cache!(ALIAS_VERSION);
+    Ok(Verified::UpToDate)
 }
 
 pub fn install(ctx: &Context) -> cu::Result<()> {

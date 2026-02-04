@@ -71,12 +71,16 @@ impl VersionCache {
     pub const fn new(id: &'static str, expected: &'static str) -> Self {
         Self { id, expected }
     }
-    /// Check if the cached version is the same as expected
-    pub fn is_uptodate(self) -> cu::Result<bool> {
-        let cached_version = get_cached_version(self.id)?;
-        let is_uptodate = cached_version.as_deref() == Some(self.expected);
+    pub fn id(self) -> &'static str {
+        self.id
+    }
+    /// Check if the cached version is the same as expected.
+    /// Returns None if not found in version cache
+    pub fn is_uptodate(self) -> cu::Result<Option<bool>> {
+        let cached_version = cu::some!(get_cached_version(self.id)?);
+        let is_uptodate = cached_version == self.expected;
         cu::debug!("version cache not up to date: {}", self.id);
-        Ok(is_uptodate)
+        Ok(Some(is_uptodate))
     }
     /// Set the cached version to be the expected
     pub fn update(self) -> cu::Result<()> {

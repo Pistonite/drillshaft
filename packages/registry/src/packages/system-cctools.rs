@@ -15,13 +15,11 @@ register_binaries!(
     "clang-tidy",
     "clangd",
     "make",
-    "cmake",
     "ninja"
 );
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    check_bin_in_path!("cmake");
-    check_bin_in_path!("ninja");
+    check_in_path!("ninja");
     cu::warn!(
         "system-cctools does not check if a working C/C++ Toolchain and tools exists, please check so manually if it does not work"
     );

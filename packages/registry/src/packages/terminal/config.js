@@ -91,6 +91,11 @@ function main(config) {
     const HIDE_PROFILE_SOURCES = [
         "Windows.Terminal.VisualStudio",
         "Windows.Terminal.Azure",
+        "Git",
+    ];
+    const CMD_GUID = "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}";
+    const HIDE_PROFILE_GUIDS = [
+        CMD_GUID
     ];
     const POWERSHELL5_PROFILE = {
         "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoLogo",
@@ -106,6 +111,22 @@ function main(config) {
         "name": "PowerShell 7",
         "startingDirectory": "%USERPROFILE%"
     };
+    const CLINK_CMD_GUID = "{50a056c9-bbde-4012-82c7-b5215e03254f}";
+    const CLINK_CMD_PROFILE = {
+        "commandline": META.clink_cmd_bin,
+        "guid": CLINK_CMD_GUID,
+        "hidden": false,
+        "icon": "%SystemRoot%\\System32\\cmd.exe",
+        "name": "Command Prompt",
+        "startingDirectory": "%USERPROFILE%"
+    };
+    const CMD_EXEs = [
+        "%comspec%",
+        "%systemroot%\\system32\\cmd.exe",
+        "%windir%\\system32\\cmd.exe",
+        "%systemdrive%\\windows\\system32\\cmd.exe",
+        META.cmd_bin.toLowerCase(),
+    ];
 
     if (!is_object(config)) {
         config = {};
@@ -158,58 +179,64 @@ function main(config) {
     config.profiles.defaults.padding = "2";
     config.profiles.defaults.scrollbarState = "hidden";
 
-    function find_ps_profiles() {
-        let ps7_index = -1;
-        let ps5_index = -1;
+    function zap_profiles(config) {
+        function parse_lpcommandline(xxx) {
+            if (xxx.trim().startsWith('"')) {
+                const end_i = xxx.indexOf('"', 1);
+                if (end_i === -1) {
+                    return [xxx.substring(1), ""];
+                }
+                return [xxx.substring(1, end_i), xxx.substring(end_i+1)];
+            }
+            const space_i = xxx.indexOf(' ');
+            if (space_i === -1) {
+                return [xxx, ""];
+            }
+            return [xxx.substring(0, space_i), xxx.substring(space_i)];
+        }
+        const non_controlled_profiles = [];
         const profile_len = config.profiles.list.length;
         for (let i=0;i<profile_len;i++) {
             const profile = config.profiles.list[i];
             if (HIDE_PROFILE_SOURCES.includes(profile.source)) {
                 profile.hidden = true;
+            } else if (HIDE_PROFILE_GUIDS.includes(profile.guid)) {
+                profile.hidden = true;
             }
             if (profile.name === "PowerShell 7") {
-                ps7_index = i;
+                continue;
             } else if (profile.name === "Windows PowerShell") {
-                ps5_index = i;
+                continue;
+            } else if (profile.guid === CLINK_CMD_GUID) {
+                continue;
             }
-        }
-        return [ps5_index, ps7_index];
-    }
 
-    if (META.pwsh_installed) {
-        config.defaultProfile = POWERSHELL7_PROFILE.guid;
-        let [ps5_index, ps7_index] = find_ps_profiles();
-        if (ps5_index === 1 && ps7_index === 0) {
-            config.profiles.list[ps5_index] = POWERSHELL5_PROFILE;
-            config.profiles.list[ps7_index] = POWERSHELL7_PROFILE;
-        } else {
-            while (ps5_index !== -1) {
-                config.profiles.list.splice(ps5_index, 1);
-                [ps5_index, ps7_index] = find_ps_profiles();
+            // convert cmd to clink_cmd
+            const commandline = profile.commandline;
+            if (commandline?.trim()) {
+                const [executable, rest] = parse_lpcommandline(commandline);
+                if (CMD_EXEs.includes(executable.toLowerCase())) {
+                    if (META.clink_cmd_bin.includes(' ')) {
+                        profile.commandline = `"${META.clink_cmd_bin}"${rest}`;
+                    } else {
+                        profile.commandline = `${META.clink_cmd_bin} ${rest}`;
+                    }
+                }
             }
-            while (ps7_index !== -1) {
-                config.profiles.list.splice(ps7_index, 1);
-                [ps5_index, ps7_index] = find_ps_profiles();
-            }
-            config.profiles.list.splice(0, 0, POWERSHELL7_PROFILE, POWERSHELL5_PROFILE);
+
+            non_controlled_profiles.push(profile);
         }
-    } else {
-        config.defaultProfile = POWERSHELL5_PROFILE.guid;
-        let [ps5_index, ps7_index] = find_ps_profiles();
-        if (ps5_index === 0 && ps7_index === -1) {
-            config.profiles.list[ps5_index] = POWERSHELL5_PROFILE;
+        config.profiles.list = [];
+        if (META.pwsh_installed) {
+            config.defaultProfile = POWERSHELL7_PROFILE.guid;
+            config.profiles.list.push(POWERSHELL7_PROFILE)
         } else {
-            while (ps5_index !== -1) {
-                config.profiles.list.splice(ps5_index, 1);
-                [ps5_index, ps7_index] = find_ps_profiles();
-            }
-            while (ps7_index !== -1) {
-                config.profiles.list.splice(ps7_index, 1);
-                [ps5_index, ps7_index] = find_ps_profiles();
-            }
-            config.profiles.list.splice(0, 0, POWERSHELL5_PROFILE);
+            config.defaultProfile = POWERSHELL5_PROFILE.guid;
         }
+        config.profiles.list.push(POWERSHELL5_PROFILE, CLINK_CMD_PROFILE);
+        config.profiles.list.push(...non_controlled_profiles);
     }
+    zap_profiles(config);
 
     return config;
 }

@@ -1,0 +1,36 @@
+
+[shell]
+disabled = false
+powershell_indicator = "[\ue70f](blue)"
+pwsh_indicator = "\ue70f"
+cmd_indicator = "\uf489"
+
+[os]
+disabled = false
+
+[os.symbols]
+Arch = "\uf303"
+Ubuntu = "\uf31b"
+Windows = ""
+Macos = "\U000f0633"
+Linux = "\uf489"
+Unknown = "\uf489"
+
+[directory]
+style = "bright-cyan"
+truncate_to_repo = false
+truncation_symbol = ".../"
+use_os_path_sep = false
+read_only = " "
+
+[jobs]
+number_threshold = 1
+format = "[\\[$number\\] ]($style)"
+
+[character]
+success_symbol = "[❯](green)"
+error_symbol = "[❯](red)"
+
+[gcloud]
+disabled = true
+

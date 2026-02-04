@@ -3,17 +3,14 @@
 use crate::pre::*;
 
 register_binaries!("delta");
-
-pub static VERSION: VersionCache = VersionCache::new("git-cfg", metadata::git::CFG_VERSION);
-
-pub fn binary_dependencies() -> EnumSet<BinId> {
-    enum_set! { BinId::Git }
-}
+version_cache!(pub static VERSION = metadata::git::CFG_VERSION);
+binary_dependencies!(Git);
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
-    let v = check_installed_with_cargo!("delta", "git-delta");
+    let v = check_cargo!("delta" in crate "git-delta");
     check_outdated!(&v.version, metadata::git::delta::VERSION);
-    Ok(Verified::is_uptodate(VERSION.is_uptodate()?))
+    check_version_cache!(VERSION);
+    Ok(Verified::UpToDate)
 }
 pub fn install(ctx: &Context) -> cu::Result<()> {
     epkg::cargo::binstall("git-delta", ctx.bar_ref())?;

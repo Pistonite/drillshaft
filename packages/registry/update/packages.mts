@@ -179,6 +179,24 @@ export const pkg_hack_font: PackageFn = (meta) => [
         })
     })
 ];
+export const pkg_terminal: PackageFn = (meta) =>
+    fetch_from_github_release({
+        repo: meta.get("clink.REPO"),
+        artifact: (artifacts) => {
+            for (const name of artifacts) {
+                if (!name.startsWith("clink.")) continue;
+                if (!name.endsWith(".zip")) continue;
+                if (name.endsWith("symbols.zip")) continue;
+                return [name];
+            }
+            throw new Error("failed to find clink artifact");
+        },
+        query: (_, tag, [zip]) => ({
+            "clink.VERSION": strip_v(tag),
+            "clink.SHA": zip.sha,
+            "clink.URL": zip.url,
+        })
+    });
 export const pkg_volta: PackageFn = (meta) =>
     fetch_from_github_release({
         repo: meta.get("pnpm.REPO"),
@@ -256,3 +274,4 @@ export const pkg_ninja: PackageFn = (meta) => [
     }),
     fetch_from_arch_linux({ package: "ninja", query: (v) => ({ [cfg_linux("VERSION")]: v }) })
 ]
+export const pkg_starship = default_cratesio_fetcher("starship");

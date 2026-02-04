@@ -5,12 +5,12 @@ register_binaries!("uv", "uvx", "python");
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
     if cfg!(windows) {
-        check_bin_in_path_and_shaft!("python");
+        check_in_shaft!("python");
     } else {
-        // python is shipped with other OS
-        check_bin_in_path!("python");
+        // python might be shipped with other OS
+        check_in_path!("python");
     }
-    let v = check_installed_with_cargo!("uv");
+    let v = check_cargo!("uv");
     check_outdated!(&v.version, metadata::uv::VERSION);
     Ok(Verified::UpToDate)
 }
