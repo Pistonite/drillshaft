@@ -11,6 +11,40 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const TEMP_DIR = path.join(SCRIPT_DIR, "temp");
 export const METADATA_TOML = path.join(path.dirname(SCRIPT_DIR), "metadata.toml");
 
+/** Fetch with exponential backoff and retry (global delay shared across calls) */
+let global_backoff = 0;
+const do_backoff = async (): Promise<void> => {
+    let remaining = global_backoff;
+    while (remaining > 0) {
+        await new Promise(r => setTimeout(r, 1000));
+        remaining = Math.min(remaining - 1000, global_backoff);
+    }
+}
+export const fetch_with_retry = async (url: string, max_retries = 5): Promise<Response> => {
+    if (global_backoff > 0) {
+        console.log(`-- ${url}: waiting ${global_backoff}ms`);
+        await do_backoff();
+    }
+    for (let attempt = 0; attempt <= max_retries; attempt++) {
+        const response = await fetch(url);
+        if (response.ok) { global_backoff = 0; return response; }
+        if (response.status === 429 || response.status >= 500) {
+            if (attempt < max_retries) {
+                if (global_backoff) {
+                    global_backoff = global_backoff * 2;
+                } else {
+                    global_backoff = 2000;
+                }
+                console.log(`-- ${url}: retry ${attempt + 1}/${max_retries} after ${global_backoff}ms (status ${response.status})`);
+                await do_backoff();
+                continue;
+            }
+        }
+        throw new Error(`fetch failed for ${url}: ${response.status}`);
+    }
+    throw new Error("unreachable");
+};
+
 /** Extract owner/repo path from a GitHub URL */
 export const parse_github_repo = (repo: string): string => {
     const match = repo.match(/github\.com\/([^/]+\/[^/]+)/);

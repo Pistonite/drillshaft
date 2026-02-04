@@ -21,7 +21,7 @@ VERSION = "1.17.4"
 [coreutils]
 ALIAS_VERSION = "6"
 eza.VERSION = "0.23.4"
-uutils.VERSION = "0.5.0"
+uutils.VERSION = "0.6.0"
 zip.VERSION = "3.0"
 unzip.VERSION = "6.0"
 tar.VERSION = "1.35"
@@ -42,7 +42,7 @@ wsclip.VERSION = "0.1.5"
 [git]
 'cfg(windows)'.ALIAS_VERSION = "1"
 'cfg(windows)'.VERSION = "2.52.0"
-'cfg(target_os="linux")'.VERSION = "2.52.0"
+'cfg(target_os="linux")'.VERSION = "2.53.0"
 delta.VERSION = "0.18.2"
 CFG_VERSION = "1"
 
@@ -121,7 +121,7 @@ yarn.VERSION = "4"
 
 [uv]
 ALIAS_VERSION = "1"
-VERSION = "0.9.28"
+VERSION = "0.9.29"
 
 [gnucc]
 gcc.VERSION = "15.2.1"
