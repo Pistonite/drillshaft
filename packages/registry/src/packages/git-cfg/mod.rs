@@ -74,6 +74,8 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
             ["config", "unset", "--global", "merge.conflictStyle"]
         );
     }
+    // other configs
+    command_output!("git", ["config", "--global", "init.defaultBranch", "main"]);
     VERSION.update()?;
     Ok(())
 }

@@ -19,7 +19,7 @@ VERSION = "7.6.0-preview.6"
 VERSION = "1.17.4"
 
 [coreutils]
-ALIAS_VERSION = "6"
+ALIAS_VERSION = "7"
 eza.VERSION = "0.23.4"
 uutils.VERSION = "0.6.0"
 zip.VERSION = "3.0"
@@ -44,7 +44,7 @@ wsclip.VERSION = "0.1.5"
 'cfg(windows)'.VERSION = "2.52.0"
 'cfg(target_os="linux")'.VERSION = "2.53.0"
 delta.VERSION = "0.18.2"
-CFG_VERSION = "1"
+CFG_VERSION = "2"
 
 [perl]
 'cfg(target_os="linux")'.VERSION = "5.42.0"
