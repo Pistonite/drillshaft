@@ -4,6 +4,15 @@ disabled = false
 powershell_indicator = "[\ue70f](blue)"
 pwsh_indicator = "\ue70f"
 cmd_indicator = "\uf489"
+# set rest to empty as OS will fill in
+bash_indicator = ""
+fish_indicator = ""
+zsh_indicator = ""
+ion_indicator = ""
+elvish_indicator = ""
+tcsh_indicator = ""
+xonsh_indicator = ""
+nu_indicator = ""
 
 [os]
 disabled = false

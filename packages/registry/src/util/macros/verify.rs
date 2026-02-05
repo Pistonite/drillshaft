@@ -6,7 +6,7 @@ macro_rules! check_in_path {
         match cu::which($l) {
             Ok(p) => p,
             Err(_) => {
-                cu::print!("verify: not found in PATH: '{}'", $l);
+                cu::error!("verify: not found in PATH: '{}'", $l);
                 return Ok(Verified::NotInstalled);
             }
         }
@@ -22,7 +22,7 @@ macro_rules! check_in_shaft {
     ($bin:literal) => {{
         match cu::which($bin) {
             Err(e) => {
-                cu::print!("verify: not found in PATH: '{}'", $bin);
+                cu::error!("verify: not found in PATH: '{}'", $bin);
                 cu::debug!("check_in_shaft failed: {e:?}");
                 return Ok(Verified::NotInstalled);
             }
@@ -41,7 +41,7 @@ macro_rules! check_in_shaft {
     ($bin:literal || $system:literal) => {{
         match cu::which($bin) {
             Err(e) => {
-                cu::print!("verify: not found in PATH: '{}'", $bin);
+                cu::error!("verify: not found in PATH: '{}'", $bin);
                 cu::debug!("check_in_shaft failed: {e:?}");
                 return Ok(Verified::NotInstalled);
             }
@@ -71,7 +71,7 @@ macro_rules! check_cargo {
     ($bin:literal) => {{ check_cargo!($bin in crate $bin) }};
     ($bin:literal in crate $l:literal) => {{
         if cu::which($bin).is_err() {
-        cu::print!("verify: not found in PATH: '{}'", $bin);
+        cu::error!("verify: not found in PATH: '{}'", $bin);
             cu::debug!("check_cargo failed: binary not found: {} (crate {})", $bin, $l);
             return Ok(Verified::NotInstalled);
         }
@@ -94,7 +94,7 @@ macro_rules! check_pacman {
     ($l:literal) => {
         match epkg::pacman::installed_version($l)? {
             None => {
-                cu::print!("verify: pacman package not installed: '{}'", $l);
+                cu::error!("verify: pacman package not installed: '{}'", $l);
                 return Ok(Verified::NotInstalled);
             }
             Some(x) => x,
@@ -110,7 +110,7 @@ macro_rules! check_outdated {
         let a = $actual;
         let e = metadata::$($package)::*::$($expected)*;
         if Version(a).lt(e) {
-            cu::print!("verify: {} {} is outdated, new version: {}", stringify!($($package).*), a, e);
+            cu::error!("verify: {} {} is outdated, new version: {}", stringify!($($package).*), a, e);
             return Ok(Verified::NotUpToDate);
         }
     }};
@@ -118,7 +118,7 @@ macro_rules! check_outdated {
         let a = $actual;
         let e = $expected;
         if Version(a).lt(e) {
-            cu::print!("verify: {} {} is outdated, new version: {}", stringify!($expected), a, e);
+            cu::error!("verify: {} {} is outdated, new version: {}", stringify!($expected), a, e);
             return Ok(Verified::NotUpToDate);
         }
     }};
@@ -143,11 +143,11 @@ macro_rules! check_version_cache {
         let cache = $cache;
         match cache.is_uptodate()? {
             None => {
-                cu::print!("verify: new config: {} = {}", cache.id(), cache.version());
+                cu::error!("verify: new config: {} = {}", cache.id(), cache.version());
                 return Ok(Verified::NotInstalled);
             }
             Some(false) => {
-                cu::print!("verify: config {} is bumped: {}", cache.id(), cache.version());
+                cu::error!("verify: config {} is bumped: {}", cache.id(), cache.version());
                 return Ok(Verified::NeedsConfig);
             }
             _ => {}
