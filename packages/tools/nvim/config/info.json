@@ -1,0 +1,25 @@
+{
+    "shaft": {
+        "data-paths": [
+            "lazy",
+            "piston/aicoder",
+            "piston/undodir"
+        ]
+    },
+    "lazy": {
+        "data-path": "lazy/lazy.nvim",
+        "repo": "folke/lazy.nvim.git",
+        "tag": "v11.17.5"
+    },
+    "claude": {
+        "config-path": "claudecode.nvim",
+        "data-path": "coder/claudecode.nvim",
+        "repo": "coder/claudecode.nvim.git",
+        "commit": "93f8e48b1f6cbf2469b378c20b3df4115252d379",
+        "patch": "claudecode.patch",
+        "sparse": [
+            "lua/",
+            "plugin/"
+        ]
+    }
+}

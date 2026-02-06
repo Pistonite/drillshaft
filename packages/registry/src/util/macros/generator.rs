@@ -30,3 +30,27 @@ macro_rules! version_cache {
     };
 }
 pub(crate) use version_cache;
+
+/// Generate config definition. This also generates the config_location function
+macro_rules! config_file {
+    (static $config_ident:ident : $config_ty:ty = {
+        template: $template_str:expr,
+        migration: [$($migration_script_str:expr),*$(,)?] $(,)?
+    }) => {
+        pub fn config_location(ctx: &Context) -> cu::Result<Option<PathBuf>> {
+            Ok(Some(ctx.config_file()))
+        }
+        static $config_ident: ConfigDef<$config_ty> = ConfigDef::new(
+            $template_str, &[$($migration_script_str),*]
+        );
+        #[cfg(test)]
+        mod test_config {
+            #[test]
+            fn parse_default_config() -> cu::Result<()> {
+                super::$config_ident.load_default()?;
+                Ok(())
+            }
+        }
+    }
+}
+pub(crate) use config_file;

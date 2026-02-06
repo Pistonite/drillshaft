@@ -1,0 +1,18 @@
+[[section]]
+comment = """
+Per-device configuration for Neovim
+"""
+
+[[section]]
+key = []
+children = [{ 
+    comment = "If git integration should be enabled in nvim-tree",
+    key = ["nvim-tree-git"], value = true
+}]
+
+[[section]]
+key = []
+children = [{ 
+    comment = "Port for wsclip (for yanking to host in a ssh session)",
+    key = ["wsclip-host-port"], value = 8881
+}]

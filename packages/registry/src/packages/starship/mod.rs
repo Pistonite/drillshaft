@@ -235,10 +235,6 @@ disabled = {}
     Ok(())
 }
 
-pub fn config_location(ctx: &Context) -> cu::Result<Option<PathBuf>> {
-    Ok(Some(ctx.config_file()))
-}
-
 pub fn clean(ctx: &Context) -> cu::Result<()> {
     let _ = cu::fs::make_dir_absent_or_empty(ctx.install_dir().join("cache"));
     let Some(home) = std::env::home_dir() else {
@@ -256,8 +252,12 @@ pub fn clean(ctx: &Context) -> cu::Result<()> {
     Ok(())
 }
 
-static CONFIG: ConfigDef<Config> = ConfigDef::new(include_str!("config.toml"), &[""]);
-test_config!(CONFIG);
+config_file! {
+    static CONFIG: Config = {
+        template: include_str!("config.toml"),
+        migration: [""],
+    }
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]

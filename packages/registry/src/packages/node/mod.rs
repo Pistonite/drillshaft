@@ -153,10 +153,6 @@ pub fn clean(ctx: &Context) -> cu::Result<()> {
     Ok(())
 }
 
-pub fn config_location(ctx: &Context) -> cu::Result<Option<PathBuf>> {
-    Ok(Some(ctx.config_file()))
-}
-
 fn volta_file_name() -> &'static str {
     if cfg!(windows) {
         "volta.zip"
@@ -181,11 +177,15 @@ fn volta_url() -> cu::Result<String> {
     Ok(format!("{repo}/releases/download/v{version}/{artifact}"))
 }
 
-static CONFIG: ConfigDef<Config> = ConfigDef::new(
-    include_str!("config.toml"),
-    &[include_str!("migrate_v0.js")],
-);
-test_config!(CONFIG);
+config_file! {
+    static CONFIG: Config = {
+        template: include_str!("config.toml"),
+        migration: [
+            include_str!("migrate_v0.js")
+        ],
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]
 struct Config {

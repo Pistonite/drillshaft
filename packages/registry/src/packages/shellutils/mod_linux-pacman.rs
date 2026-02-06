@@ -6,7 +6,7 @@ use crate::pre::*;
 register_binaries!(
     "perl", "gpg", "curl", "wget",
     "fzf", "jq", "task", "x",
-    "bat", "dust", "fd", "websocat", "zoxide", "c", "ci",
+    "bat", "dust", "fd", "rg", "websocat", "zoxide", "c", "ci",
     "viopen", "vibash", "vihosts", "n"
 );
 
@@ -39,8 +39,10 @@ pub fn verify(_: &Context) -> cu::Result<Verified> {
     check_outdated!(&v.version, metadata[bat]::VERSION);
     let v = check_cargo!("dust" in crate "du-dust");
     check_outdated!(&v.version, metadata[dust]::VERSION);
-    let v = check_cargo!("find" in crate "fd-find");
+    let v = check_cargo!("fd" in crate "fd-find");
     check_outdated!(&v.version, metadata[fd]::VERSION);
+    let v = check_cargo!("rg" in crate "ripgrep");
+    check_outdated!(&v.version, metadata[rg]::VERSION);
     let v = check_cargo!("websocat");
     check_outdated!(&v.version, metadata[websocat]::VERSION);
     let v = check_cargo!("zoxide");

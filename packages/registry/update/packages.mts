@@ -163,6 +163,7 @@ export const pkg_task: PackageFn = (meta) =>
 export const pkg_bat = default_cratesio_fetcher("bat");
 export const pkg_dust = default_cratesio_fetcher("du-dust");
 export const pkg_fd = default_cratesio_fetcher("fd-find");
+export const pkg_rg = default_cratesio_fetcher("ripgrep");
 export const pkg_websocat = default_cratesio_fetcher("websocat");
 export const pkg_zoxide = default_cratesio_fetcher("zoxide");
 export const pkg_hack_font: PackageFn = (meta) => [
@@ -275,3 +276,16 @@ export const pkg_ninja: PackageFn = (meta) => [
     fetch_from_arch_linux({ package: "ninja", query: (v) => ({ [cfg_linux("VERSION")]: v }) })
 ]
 export const pkg_starship = default_cratesio_fetcher("starship");
+export const pkg_nvim: PackageFn = (meta) => [
+    fetch_from_github_release({
+        repo: meta.repo(),
+        artifacts: () => ["nvim-linux-x86_64.tar.gz", "nvim-win-arm64.zip", "nvim-win64.zip"],
+        query: (_, tag, [linux, arm, x64]) => ({
+            "VERSION": strip_v(tag),
+            [cfg_linux("SHA")]: linux.sha,
+            [cfg_windows_arm64("SHA")]: arm.sha,
+            [cfg_windows_x64("SHA")]: x64.sha,
+        })
+    }),
+    fetch_from_cratesio({ crate: "tree-sitter-cli", query: (v) => ({ "treesitter_cli.VERSION": v })})
+];

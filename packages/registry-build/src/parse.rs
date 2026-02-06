@@ -210,6 +210,9 @@ impl cu::Parse for ModuleData {
                         "config_dependencies" => {
                             export_idents.push("config_dependencies".to_string());
                         }
+                        "config_file" => {
+                            export_idents.push("config_location".to_string());
+                        }
                         _ => {}
                     }
                 }
