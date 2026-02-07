@@ -415,12 +415,12 @@ fn configure_ninja(ctx: &Context) -> cu::Result<()> {
     Ok(())
 }
 
-pub fn config_location(ctx: &Context) -> cu::Result<Option<PathBuf>> {
-    Ok(Some(ctx.config_file()))
+config_file! {
+    static CONFIG: Config = {
+        template: include_str!("config.toml"),
+        migration: []
+    }
 }
-
-static CONFIG: ConfigDef<Config> = ConfigDef::new(include_str!("config.toml"), &[]);
-test_config!(CONFIG);
 
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]

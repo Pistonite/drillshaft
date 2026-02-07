@@ -105,10 +105,6 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     Ok(())
 }
 
-pub fn config_location(ctx: &Context) -> cu::Result<Option<PathBuf>> {
-    Ok(Some(ctx.config_file()))
-}
-
 pub fn uninstall(ctx: &Context) -> cu::Result<()> {
     opfs::ensure_terminated("pwsh.exe")?;
     ctx.move_install_to_old_if_exists()?;
@@ -122,8 +118,12 @@ fn download_url() -> String {
     format!("{repo}/releases/download/v{version}/PowerShell-{version}-win-{arch}.zip")
 }
 
-static CONFIG: ConfigDef<Config> = ConfigDef::new(include_str!("config.toml"), &[]);
-test_config!(CONFIG);
+config_file! {
+    static CONFIG: Config = {
+        template: include_str!("config.toml"),
+        migration: []
+    }
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]

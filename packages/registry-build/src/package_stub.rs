@@ -12,6 +12,7 @@ pub fn empty_pkg_set() -> EnumSet<PkgId> {
 pub fn ok(_: &Context) -> cu::Result<()> {
     Ok(())
 }
+#[allow(unused)]
 pub fn unsupported_platform<T>(_: &Context) -> cu::Result<T> {
     cu::bail!("the package is not supported on the current platform")
 }
@@ -21,6 +22,7 @@ pub fn ok_none<T>(_: &Context) -> cu::Result<Option<T>> {
 impl crate::Package {
     /// Create a stub package definition, used to fill spots in the registry array
     /// for unsupported platforms
+    #[allow(unused)]
     pub(crate) const fn stub(name: &'static str) -> Self {
         Self {
             enabled: false,

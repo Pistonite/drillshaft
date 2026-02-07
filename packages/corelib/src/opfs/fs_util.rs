@@ -197,15 +197,6 @@ fn unarchive_impl(archive_path: &Path, out_dir: &Path, clean: bool) -> cu::Resul
         Zip,
         Use7z,
     }
-    fn is_second_extension_tar(path: &Path) -> bool {
-        let mut path = path.to_path_buf();
-        path.set_extension("");
-        let Some(ext) = path.extension() else {
-            return false;
-        };
-        let ext = ext.to_ascii_lowercase();
-        ext == "tar"
-    }
     let file_size = {
         let metadata = archive_path.metadata()?;
         #[cfg(unix)]
@@ -220,14 +211,8 @@ fn unarchive_impl(archive_path: &Path, out_dir: &Path, clean: bool) -> cu::Resul
     };
     let is_big_file = file_size >= 50_000_000;
     let format = match ext.as_bytes() {
-        b"gz" => {
-            // assume tar.gz
-            Format::TarGz
-        }
-        b"xz" => {
-            // assume tar.xz
-            Format::TarXz
-        }
+        b"gz" => Format::TarGz, // assume tar.gz
+        b"xz" => Format::TarXz, // assume tar.xz
         b"tgz" => Format::TarGz,
         b"txz" => Format::TarXz,
         b"tar" => {
