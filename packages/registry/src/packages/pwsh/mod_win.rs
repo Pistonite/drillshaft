@@ -122,8 +122,7 @@ fn download_url() -> String {
     format!("{repo}/releases/download/v{version}/PowerShell-{version}-win-{arch}.zip")
 }
 
-static CONFIG: ConfigDef<Config> = ConfigDef::new(
-    include_str!("config.toml"), &[]);
+static CONFIG: ConfigDef<Config> = ConfigDef::new(include_str!("config.toml"), &[]);
 test_config!(CONFIG);
 
 #[derive(Deserialize)]

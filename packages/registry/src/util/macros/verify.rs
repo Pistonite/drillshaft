@@ -147,7 +147,11 @@ macro_rules! check_version_cache {
                 return Ok(Verified::NotInstalled);
             }
             Some(false) => {
-                cu::error!("verify: config {} is bumped: {}", cache.id(), cache.version());
+                cu::error!(
+                    "verify: config {} is bumped: {}",
+                    cache.id(),
+                    cache.version()
+                );
                 return Ok(Verified::NeedsConfig);
             }
             _ => {}

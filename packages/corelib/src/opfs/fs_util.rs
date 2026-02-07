@@ -221,15 +221,11 @@ fn unarchive_impl(archive_path: &Path, out_dir: &Path, clean: bool) -> cu::Resul
     let is_big_file = file_size >= 50_000_000;
     let format = match ext.as_bytes() {
         b"gz" => {
-            if !is_second_extension_tar(archive_path) {
-                cu::bail!("only .tar.gz is supported for .gz files");
-            }
+            // assume tar.gz
             Format::TarGz
         }
         b"xz" => {
-            if !is_second_extension_tar(archive_path) {
-                cu::bail!("only .tar.xz is supported for .xz files");
-            }
+            // assume tar.xz
             Format::TarXz
         }
         b"tgz" => Format::TarGz,
