@@ -20,12 +20,12 @@ default-features = false
 # path = "../cu/packages/promethium"
 
 [workspace.dependencies.win-envedit]
-version = "0.1.4"
+version = "0.1.5"
 git = "https://github.com/Pistonite/shellutils"
 branch = "main"
 
 [workspace.dependencies.viopen]
-version = "0.1.3"
+version = "0.1.4"
 git = "https://github.com/Pistonite/shellutils"
 branch = "main"
 
