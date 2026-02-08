@@ -55,11 +55,7 @@ pub fn local_update() -> cu::Result<()> {
     let (child, bar) = cu::which("cargo")?
         .command()
         .current_dir(&corelib_path)
-        .add(cu::args![
-            "build",
-            "--release",
-            "--locked"
-        ])
+        .add(cu::args!["build", "--release", "--locked"])
         .preset(cu::pio::cargo("ensure successful corelib build"))
         .spawn()?;
     child.wait_nz()?;
