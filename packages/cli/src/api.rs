@@ -9,8 +9,8 @@ static LOGO: &'static str = r" ______ __  __ ______ ______ ______
  \/\_____\\_\ \_\\_\ \_\\_\    \ \_\  
   \/_____//_/\/_//_/\/_//_/     \/_/  ";
 
-/// The component that keeps machine running
-#[derive(clap::Parser, Debug, AsRef, Serialize, Deserialize)]
+/// The component that keeps the machine running
+#[derive(clap::Parser, Debug, AsRef)]
 #[clap(before_help = LOGO)]
 pub struct CliApi {
     /// If a command was interrupted previously, discard it
@@ -19,7 +19,6 @@ pub struct CliApi {
     #[clap(subcommand)]
     pub command: Option<CliCommand>,
     #[as_ref]
-    #[serde(skip)]
     #[clap(flatten)]
     flags: cu::cli::Flags,
 
@@ -84,7 +83,7 @@ impl CliApi {
     }
 }
 
-#[derive(clap::Subcommand, Debug, Serialize, Deserialize)]
+#[derive(clap::Subcommand, Debug)]
 pub enum CliCommand {
     /// Upgrade this binary to the latest version
     Upgrade(CliCommandUpgrade),
@@ -94,12 +93,12 @@ pub enum CliCommand {
     Remove(CliCommandRemove),
     /// Edit configuration for a package
     Config(CliCommandConfig),
+    /// Search or print info of a package or binary
+    Info(CliCommandInfo),
     /// Clean temporary files for this tool and/or package(s)
     Clean(CliCommandClean),
-    /// Resume previous operation, if one was interrupted
-    Resume(#[serde(skip)] cu::cli::Flags),
     /// Print the version, -v to run self-check
-    Version(#[serde(skip)] cu::cli::Flags),
+    Version(cu::cli::Flags),
 }
 impl AsRef<cu::cli::Flags> for CliCommand {
     fn as_ref(&self) -> &cu::cli::Flags {
@@ -109,7 +108,7 @@ impl AsRef<cu::cli::Flags> for CliCommand {
             CliCommand::Remove(x) => x.as_ref(),
             CliCommand::Config(x) => x.as_ref(),
             CliCommand::Clean(x) => x.as_ref(),
-            CliCommand::Resume(x) => x,
+            CliCommand::Info(x) => x.as_ref(),
             CliCommand::Version(x) => x,
         }
     }
@@ -118,25 +117,24 @@ impl CliCommand {
     pub fn run(self) -> cu::Result<()> {
         match self {
             CliCommand::Version(_) => {}
-            CliCommand::Resume(_) => {}
             CliCommand::Upgrade(cmd) => cmd.run()?,
             CliCommand::Sync(cmd) => cmd.run()?,
             CliCommand::Remove(cmd) => cmd.run()?,
             CliCommand::Config(cmd) => cmd.run()?,
+            CliCommand::Info(cmd) => cmd.run()?,
             CliCommand::Clean(_) => {}
         }
         Ok(())
     }
 }
 
-#[derive(clap::Parser, Debug, AsRef, Serialize, Deserialize)]
+#[derive(clap::Parser, Debug, AsRef)]
 pub struct CliCommandUpgrade {
     /// Build and install from this path, instead of from upstream
     #[clap(short, long)]
     pub path: Option<String>,
     #[clap(flatten)]
     #[as_ref]
-    #[serde(skip)]
     pub flags: cu::cli::Flags,
 }
 
@@ -146,13 +144,12 @@ impl CliCommandUpgrade {
     }
 }
 
-#[derive(clap::Parser, Debug, AsRef, Serialize, Deserialize)]
+#[derive(clap::Parser, Debug, AsRef)]
 pub struct CliCommandSync {
     /// Package(s) to install or update. If none specified, will update all installed packages.
     pub packages: Vec<String>,
     #[clap(flatten)]
     #[as_ref]
-    #[serde(skip)]
     pub flags: cu::cli::Flags,
 }
 impl CliCommandSync {
@@ -161,7 +158,7 @@ impl CliCommandSync {
     }
 }
 
-#[derive(clap::Parser, Debug, AsRef, Serialize, Deserialize)]
+#[derive(clap::Parser, Debug, AsRef)]
 pub struct CliCommandRemove {
     /// Package(s) to remove.
     pub packages: Vec<String>,
@@ -170,7 +167,6 @@ pub struct CliCommandRemove {
     pub force: bool,
     #[clap(flatten)]
     #[as_ref]
-    #[serde(skip)]
     pub flags: cu::cli::Flags,
 }
 impl CliCommandRemove {
@@ -179,7 +175,7 @@ impl CliCommandRemove {
     }
 }
 
-#[derive(clap::Parser, Debug, AsRef, Serialize, Deserialize)]
+#[derive(clap::Parser, Debug, AsRef)]
 pub struct CliCommandConfig {
     /// Package to config
     pub package: Option<String>,
@@ -191,7 +187,6 @@ pub struct CliCommandConfig {
     pub dirty: bool,
     #[clap(flatten)]
     #[as_ref]
-    #[serde(skip)]
     pub flags: cu::cli::Flags,
 }
 impl CliCommandConfig {
@@ -219,12 +214,63 @@ impl CliCommandConfig {
     }
 }
 
-#[derive(clap::Parser, Debug, AsRef, Serialize, Deserialize)]
+#[derive(clap::Parser, Debug, AsRef)]
+pub struct CliCommandInfo {
+    /// Package or binary. Use --search to search. Must be provided if --installed is false
+    ///
+    /// Specify --binary or --package to narrow the type to search
+    pub pkg_or_bin_query: Option<String>,
+
+    /// Treat the pkg_or_bin input as string to search rather than exact match
+    #[clap(short, long)]
+    pub search: bool,
+
+    /// Treat the pkg_or_bin as name of a binary
+    #[clap(short, long, conflicts_with = "package")]
+    pub binary: bool,
+
+    /// Treat the pkg_or_bin as name of a package
+    #[clap(short, long, conflicts_with = "binary")]
+    pub package: bool,
+
+    /// Scope results to installed packages only
+    #[clap(short = 'I', long)]
+    pub installed: bool,
+
+    /// Machine mode. Only print the name of the package, one per line
+    #[clap(short, long)]
+    pub machine: bool,
+
+    #[clap(flatten)]
+    #[as_ref]
+    pub flags: cu::cli::Flags,
+}
+impl CliCommandInfo {
+    fn run(self) -> cu::Result<()> {
+        if self.machine {
+            cu::lv::disable_print_time();
+        }
+        let result = crate::cmds::info(
+            self.pkg_or_bin_query.as_deref().unwrap_or_default(),
+            self.search,
+            self.installed,
+            self.binary,
+            self.package,
+            self.machine,
+        );
+        let found = cu::check!(result, "error getting package information")?;
+        if !found {
+            cu::bail!("no results");
+        }
+        Ok(())
+    }
+}
+
+#[derive(clap::Parser, Debug, AsRef)]
 pub struct CliCommandClean {
     /// Package(s) to clean. If none specified, will only clean this tool.
     pub package: Vec<String>,
     #[clap(flatten)]
     #[as_ref]
-    #[serde(skip)]
     pub flags: cu::cli::Flags,
 }

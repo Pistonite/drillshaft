@@ -2507,6 +2507,7 @@ dependencies = [
  "clap",
  "enum-map",
  "enumset",
+ "itertools",
  "pistonite-cu",
  "serde",
  "shaft-corelib",
