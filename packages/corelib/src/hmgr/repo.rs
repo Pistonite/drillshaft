@@ -51,17 +51,16 @@ pub fn local_update() -> cu::Result<()> {
         }
     }
 
+    let corelib_path = repo_path.join("packages/corelib");
     let (child, bar) = cu::which("cargo")?
         .command()
-        .current_dir(&repo_path)
+        .current_dir(&corelib_path)
         .add(cu::args![
             "build",
-            "--bin",
-            "shaft",
             "--release",
             "--locked"
         ])
-        .preset(cu::pio::cargo("ensure successful build"))
+        .preset(cu::pio::cargo("ensure successful corelib build"))
         .spawn()?;
     child.wait_nz()?;
     bar.done();
