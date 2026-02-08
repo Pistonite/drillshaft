@@ -25,6 +25,5 @@ Documentation below is for me to setup `shaft` on a new machine.
 ```
 cargo install shaft-cli --git https://github.com/Pistonite/shaft --locked
 shaft # setup
-shaft sync cargo-binstall
-shaft upgrade # upgrade with cargo-binstall
+shaft upgrade # clone the repo locally to build and update
 ```

@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use corelib::{hmgr, opfs};
 use cu::pre::*;
 
@@ -130,9 +128,6 @@ impl CliCommand {
 
 #[derive(clap::Parser, Debug, AsRef)]
 pub struct CliCommandUpgrade {
-    /// Build and install from this path, instead of from upstream
-    #[clap(short, long)]
-    pub path: Option<String>,
     #[clap(flatten)]
     #[as_ref]
     pub flags: cu::cli::Flags,
@@ -140,7 +135,7 @@ pub struct CliCommandUpgrade {
 
 impl CliCommandUpgrade {
     fn run(&self) -> cu::Result<()> {
-        crate::cmds::upgrade(self.path.as_ref().map(Path::new))
+        corelib::hmgr::repo::local_update()
     }
 }
 

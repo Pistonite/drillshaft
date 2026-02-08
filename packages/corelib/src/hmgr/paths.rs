@@ -85,7 +85,7 @@ home! {
     temp_root:             "temp",
     temp_dir:                 temp_root / path,
     tools_root:            "tools",
-    tools_version:            tools_root / "version",
+    repo:                  "repo",
     dot_interrupted:       ".interrupted",
     dot_lock:              ".lock",
     environment_json:      "environment.json",
