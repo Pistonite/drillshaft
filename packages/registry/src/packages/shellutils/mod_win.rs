@@ -12,7 +12,7 @@ register_binaries!(
     "wsclip"
 );
 
-binary_dependencies!(Scalar, _7z, CargoBIntsall);
+binary_dependencies!(Scalar, _7z, CargoBintsall);
 
 mod common;
 mod wget;

@@ -16,8 +16,9 @@ jobs:
     steps:
       - uses: Pistonight/mono-dev/actions/setup@main
         with:
-          mono-dev: true
+          mono-dev: packages
           rust: stable
+          tool-cargo-install: lfmt=Pistonite/shellutils
       - run: task check
       - run: task test
 
