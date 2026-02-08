@@ -199,7 +199,7 @@ fn init_sudo_path() -> cu::Result<PathBuf> {
         cu::bail!("cannot find sudo.exe. Please ensure Sudo for Windows is enabled.");
     }
     let path2 = cu::which("sudo")?;
-    if sudo_path != path2 {
+    if sudo_path.to_string_lossy().to_lowercase() != path2.to_string_lossy().to_lowercase() {
         cu::error!(
             "sudo.exe is not at the expected location. Either you are running an unsupported version of Windows, or your PATH is corrupted (possibly by a malicous program)"
         );
