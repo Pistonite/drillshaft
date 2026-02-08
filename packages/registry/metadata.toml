@@ -32,12 +32,12 @@ bash_cmp.VERSION = "2.17.0"
 [shellutils]
 ALIAS_VERSION = "6"
 REPO = "https://github.com/Pistonite/shellutils"
-COMMIT = "331ee9d19e26ed82ca42b31513a042381ca8db3a"
+COMMIT = "b714fd6b2ed7308e1ed9e5dae989667a0f7a7164"
 which.VERSION = "0.1.3"
-viopen.VERSION = "0.1.3"
-vipath.VERSION = "0.1.5"
+viopen.VERSION = "0.1.4"
+vipath.VERSION = "0.1.6"
 n.VERSION = "0.1.1"
-wsclip.VERSION = "0.1.5"
+wsclip.VERSION = "0.1.6"
 
 [git]
 'cfg(windows)'.ALIAS_VERSION = "1"
@@ -118,13 +118,13 @@ VERSION = "2.0.2"
 'cfg(target_os="linux")'.SHA = "6cec054c911fb925b629a09455775af6e95dc0f5694a4c28b63979ab9ef18037"
 ALIAS_VERSION = "1"
 pnpm.REPO = "https://github.com/pnpm/pnpm"
-pnpm.VERSION = "10.28.2"
+pnpm.VERSION = "10.29.1"
 node.VERSION = "24"
 yarn.VERSION = "4"
 
 [uv]
 ALIAS_VERSION = "1"
-VERSION = "0.9.29"
+VERSION = "0.10.0"
 
 [gnucc]
 gcc.VERSION = "15.2.1"
