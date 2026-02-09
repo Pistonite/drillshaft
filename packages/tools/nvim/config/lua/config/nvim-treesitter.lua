@@ -3,9 +3,6 @@ local cache_dir = vim.fn.stdpath('config')..'/lua/piston/cache'
 local cache_lua = cache_dir..'/tree-sitter-installed.lua'
 
 local cached_fts = {}
-if vim.uv.fs_stat(cache_lua)~=nil then
-    cached_fts = require("piston.cache.tree-sitter-installed")
-end
 local install_dir = vim.fn.stdpath('data')..'/piston/tree-sitter-install'
 require('nvim-treesitter').setup({
     install_dir = install_dir,
@@ -76,9 +73,17 @@ local reload_cache = function()
     if vim.list_contains(new_fts, vim.bo.filetype) then
         enable_treesitter_for_curr_buf()
     end
+
+    return new_fts
 end
 
+if vim.uv.fs_stat(cache_lua)~=nil then
+    cached_fts = require("piston.cache.tree-sitter-installed")
+else
+    cached_fts = reload_cache()
+end
 create_treesitter_autocmd(cached_fts)
+
 vim.api.nvim_create_user_command('TSReload', function(_)
     reload_cache()
 end, {
