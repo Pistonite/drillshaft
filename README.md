@@ -27,7 +27,7 @@ Installing for the first time: clone and build
 git clone https://github.com/Pistonite/shaft
 cd shaft
 cargo run --bin shaft-build
-cargo install --path .
+cargo install --path packages/cli
 ```
 
 To upgrade run `shaft upgrade`
