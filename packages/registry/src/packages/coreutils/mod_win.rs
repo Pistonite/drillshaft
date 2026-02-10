@@ -1,5 +1,7 @@
 //! GNU Coreutils, Diffutils, and other basic commands for common workflows
 
+use std::collections::BTreeSet;
+
 use crate::pre::*;
 
 mod common;
@@ -9,6 +11,12 @@ register_binaries!(
     "ls", "diff", "find", "gzip", "sed", "grep", "zip", "unzip", "tar"
 );
 binary_dependencies!(Git, CargoBinstall);
+
+static PS_ALIASES: &[&str] = &[
+    "cat", "cp", "dir", "echo", "ls", "mv", "pwd", "rm", "rmdir", "sort", "sleep", "tee",
+];
+static SYSTEM32_EXES: &[&str] = &["expand", "hostname", "more", "sort", "whoami"];
+static PS_FUNCTIONS: &[&str] = &["mkdir"];
 
 pub fn verify(_: &Context) -> cu::Result<Verified> {
     eza::verify()?;
@@ -66,10 +74,11 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     cu::fs::copy(&coreutils_src, &coreutils_path)?;
     let coreutils_path = coreutils_path.into_utf8()?;
 
-    let config = ctx.load
+    let config = ctx.load_config(CONFIG)?;
 
-    let list_output = command_output!("coreutils", ["--list"]);
-    let utils: Vec<_> = list_output
+    let all_utils = command_output!("coreutils", ["--list"]);
+    // ^ shadowed, but need to keep alive
+    let all_utils: BTreeSet<_> = all_utils
         .lines()
         .map(|s| s.trim())
         .filter(|s| {
@@ -79,60 +88,50 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
             if !s.chars().all(|c| c.is_alphanumeric()) {
                 return false;
             }
-            // link conflicts with MSVC
-            if *s == "link" {
+            // excluded by config:
+            if config.windows.exclude_coreutils.contains(*s) {
                 return false;
             }
+            // always-exclude:
+            if *s == "link" {
+                // link conflicts with MSVC
+                return false;
+            }
+
             true
         })
         .collect();
 
-    {
-        let bar = cu::progress("configuring coreutils")
-            .total(utils.len())
-            .parent(ctx.bar())
-            .spawn();
-        let has_pwsh = ctx.is_installed(PkgId::Pwsh);
-
-        // Run shell checks in parallel with pool of 4
-        cu::co::run(async move {
-            let pool = cu::co::pool(4);
-            let mut handles = Vec::with_capacity(utils.len());
-            for util in &utils {
-                let util = util.to_string();
-                let handle = pool.spawn(async move {
-                    let is_alias = shell_has_alias("powershell", &util).await?
-                        || (has_pwsh && shell_has_alias("pwsh", &util).await?);
-                    let is_binary = shell_has_binary("powershell", &util).await?
-                        || (has_pwsh && shell_has_binary("pwsh", &util).await?);
-                    cu::Ok((util, is_alias, is_binary))
-                });
-                handles.push(handle);
-            }
-
-            let mut set = cu::co::set(handles);
-            while let Some(result) = set.next().await {
-                let (util, is_alias, is_binary) = result??;
-                cu::progress!(bar += 1, "{util}");
-                let link_path = hmgr::paths::binary(bin_name!(&util)).into_utf8()?;
-                if is_alias {
-                    cu::info!("removing powershell alias: {util}");
-                    ctx.add_item(Item::pwsh(format!("Remove-Item Alias:{util} -Force")))?;
-                }
-                if is_binary {
-                    cu::info!("overriding powershell command: {util}");
-                    ctx.add_item(Item::pwsh(format!(
-                        "Set-Alias -Name {util} -Value '{link_path}'"
-                    )))?;
-                }
-                ctx.add_item(Item::link_bin(link_path, coreutils_path.clone()))?;
-            }
-            cu::Ok(())
-        })?;
+    // link utils
+    for util in &all_utils {
+        ctx.add_item(Item::link_bin(bin_name!(util), coreutils_path.clone()))?;
     }
-    // not sure what's going on with mkdir and why it's a function now instead of alias of New-Item
-    // just patching it now (probably bad Windows update or something)
-    ctx.add_item(Item::pwsh("Remove-Item Function:mkdir -Force"))?;
+    // remove PS aliases and functions
+    for util in PS_ALIASES {
+        if all_utils.contains(util) {
+            ctx.add_item(Item::pwsh(format!("Remove-Item Alias:{util} -Force")))?;
+        }
+    }
+    for util in PS_FUNCTIONS {
+        if all_utils.contains(util) {
+            ctx.add_item(Item::pwsh(format!("Remove-Item Function:{util} -Force")))?;
+        }
+    }
+    // override System32 binaries by setting alias/doskey
+    for util in SYSTEM32_EXES {
+        let link_path = hmgr::paths::binary(bin_name!(&util)).into_utf8()?;
+        if all_utils.contains(util) {
+            ctx.add_item(Item::pwsh(format!(
+                "Set-Alias -Name {util} -Value '{link_path}'"
+            )))?;
+            ctx.add_item(Item::cmd(format!("doskey {util}=\"{link_path}\" $*")))?;
+        }
+    }
+    if config.windows.cmd_mkdir {
+        let link_path = hmgr::paths::binary(bin_name!("mkdir")).into_utf8()?;
+        ctx.add_item(Item::cmd(format!("doskey mkdir=\"{link_path}\" -p $*")))?;
+    }
+
     // configure utils from mingw
     let exe_path = opfs::find_in_wingit("usr/bin/grep.exe")?;
     ctx.add_item(Item::shim_bin(
@@ -141,17 +140,22 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     ))?;
     const MINGW_UTILS: &[&str] = &["diff", "diff3", "cmp", "find", "gzip", "sed", "unzip"];
     for util in MINGW_UTILS {
+        if config.windows.exclude_coreutils.contains(*util) {
+            continue;
+        }
         let exe_path = opfs::find_in_wingit(format!("usr/bin/{util}.exe"))?;
         ctx.add_item(Item::shim_bin(
             bin_name!(util),
             ShimCommand::target(exe_path.into_utf8()?),
         ))?;
     }
-    // find is not part of coreutils - replace System32\find.exe in PowerShell
-    let findutil_path = hmgr::paths::binary(bin_name!("find")).into_utf8()?;
-    ctx.add_item(Item::pwsh(format!(
-        "Set-Alias -Name find -Value '{findutil_path}'"
-    )))?;
+    if !config.windows.exclude_coreutils.contains("find") {
+        let findutil_path = hmgr::paths::binary(bin_name!("find")).into_utf8()?;
+        ctx.add_item(Item::pwsh(format!(
+            "Set-Alias -Name find -Value '{findutil_path}'"
+        )))?;
+        ctx.add_item(Item::cmd(format!("doskey find=\"{findutil_path}\" $*")))?;
+    }
 
     // unpack zip for windows. note that GnuWin for unzip is outdated, so we are using
     // the one from Git
@@ -169,33 +173,6 @@ pub fn configure(ctx: &Context) -> cu::Result<()> {
     Ok(())
 }
 
-async fn shell_has_alias(shell: &str, util: &str) -> cu::Result<bool> {
-    let script = format!(
-        "if (Get-Alias {util} -ErrorAction SilentlyContinue) {{ exit 0 }} else {{ exit 1 }}"
-    );
-    cu::which(shell)?
-        .command()
-        .args(["-NoLogo", "-NoProfile", "-c", &script])
-        .all_null()
-        .co_wait()
-        .await
-        .map(|s| s.success())
-}
-
-async fn shell_has_binary(shell: &str, util: &str) -> cu::Result<bool> {
-    // Remove alias first (if any), then check if there's a binary
-    let script = format!(
-        "Remove-Item Alias:{util} -Force; if ((Get-Command {util} -ErrorAction SilentlyContinue).CommandType -eq 'Application') {{ exit 0 }} else {{ exit 1 }}"
-    );
-    cu::which(shell)?
-        .command()
-        .args(["-NoLogo", "-NoProfile", "-c", &script])
-        .all_null()
-        .co_wait()
-        .await
-        .map(|s| s.success())
-}
-
 config_file! {
     static CONFIG: Config = {
         template: include_str!("config.toml"),
@@ -204,10 +181,13 @@ config_file! {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 struct Config {
-    windows: ConfigWindows
+    windows: ConfigWindows,
 }
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 struct ConfigWindows {
-    exclude_coreutils: Vec<String>
+    exclude_coreutils: BTreeSet<String>,
+    cmd_mkdir: bool,
 }

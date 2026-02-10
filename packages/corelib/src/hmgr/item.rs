@@ -147,7 +147,9 @@ impl ItemMgr {
             let bin_root = hmgr::paths::bin_root();
             for bin in bin_to_remove {
                 cu::progress!(bar += 1, "{bin}");
-                opfs::safe_remove_link(&bin_root.join(bin))?;
+                if let Err(e) = opfs::safe_remove_link(&bin_root.join(bin)) {
+                    cu::warn!("failed to remove old link: {e}");
+                }
             }
         }
 
@@ -584,6 +586,9 @@ impl ItemMgr {
             opfs::hardlink_files(&[(&shim_binary_old, &shim_binary)])?;
         }
 
+        // the old binary could be in use, which will not allow us to copy it,
+        // but we can remove it because it's hardlinked
+        opfs::safe_remove_link(&shim_binary)?;
         cu::fs::copy(&shim_path, &shim_binary)?;
 
         // create new links
