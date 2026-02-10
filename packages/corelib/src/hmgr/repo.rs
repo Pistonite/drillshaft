@@ -42,7 +42,7 @@ pub fn local_update() -> cu::Result<()> {
             .command()
             .current_dir(&repo_path)
             .add(cu::args![
-                "build",
+                "run",
                 "--bin",
                 "shaft-build",
                 "--locked",
