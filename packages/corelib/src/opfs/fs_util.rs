@@ -124,7 +124,7 @@ pub fn safe_remove_link(path: &Path) -> cu::Result<()> {
             &format!("Remove-Item {}", quote_path(path)?),
         ])
         .stdout(cu::lv::D)
-        .stderr(cu::lv::E)
+        .stderr(cu::lv::D)
         .stdin_null()
         .wait_nz()?;
     Ok(())
