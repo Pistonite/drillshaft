@@ -22,8 +22,12 @@ Documentation below is for me to setup `shaft` on a new machine.
   - Install [Rust](https://rustup.rs) toolchain and build tools.
 
 ## Install/Upgrade
+Installing for the first time: clone and build
 ```
-cargo install shaft-cli --git https://github.com/Pistonite/shaft --locked
-shaft # setup
-shaft upgrade # clone the repo locally to build and update
+git clone https://github.com/Pistonite/shaft
+cd shaft
+cargo run --bin shaft-build
+cargo install --path .
 ```
+
+To upgrade run `shaft upgrade`
