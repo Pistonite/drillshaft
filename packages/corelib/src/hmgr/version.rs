@@ -83,7 +83,9 @@ impl VersionCache {
     pub fn is_uptodate(self) -> cu::Result<Option<bool>> {
         let cached_version = cu::some!(get_cached_version(self.id)?);
         let is_uptodate = cached_version == self.expected;
-        cu::debug!("version cache not up to date: {}", self.id);
+        if !is_uptodate {
+            cu::debug!("version cache not up to date: {}", self.id);
+        }
         Ok(Some(is_uptodate))
     }
     /// Set the cached version to be the expected

@@ -41,7 +41,14 @@ pub fn local_update() -> cu::Result<()> {
         let (child, bar) = cu::which("cargo")?
             .command()
             .current_dir(&repo_path)
-            .add(cu::args!["build", "--bin", "shaft-build", "--locked"])
+            .add(cu::args![
+                "build",
+                "--bin",
+                "shaft-build",
+                "--locked",
+                "--",
+                "--clean"
+            ])
             .preset(cu::pio::cargo("running pre-build script"))
             .spawn()?;
         child.wait_nz()?;

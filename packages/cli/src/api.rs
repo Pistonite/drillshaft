@@ -11,9 +11,6 @@ static LOGO: &str = r" ______ __  __ ______ ______ ______
 #[derive(clap::Parser, Debug, AsRef)]
 #[clap(before_help = LOGO)]
 pub struct CliApi {
-    /// If a command was interrupted previously, discard it
-    #[clap(short = 'A', long)]
-    pub abort_previous: bool,
     #[clap(subcommand)]
     pub command: Option<CliCommand>,
     #[as_ref]
@@ -120,7 +117,7 @@ impl CliCommand {
             CliCommand::Remove(cmd) => cmd.run()?,
             CliCommand::Config(cmd) => cmd.run()?,
             CliCommand::Info(cmd) => cmd.run()?,
-            CliCommand::Clean(_) => {}
+            CliCommand::Clean(cmd) => cmd.run()?,
         }
         Ok(())
     }
@@ -263,9 +260,20 @@ impl CliCommandInfo {
 
 #[derive(clap::Parser, Debug, AsRef)]
 pub struct CliCommandClean {
-    /// Package(s) to clean. If none specified, will only clean this tool.
+    /// Package(s) to clean. If none specified, will only clean 'core' (shaft itself).
     pub package: Vec<String>,
+
+    /// Clean all installed packages, including shaft itself
+    #[clap(short, long, conflicts_with = "package")]
+    pub all: bool,
+
     #[clap(flatten)]
     #[as_ref]
     pub flags: cu::cli::Flags,
+}
+
+impl CliCommandClean {
+    fn run(self) -> cu::Result<()> {
+        crate::cmds::clean(&self.package, self.all)
+    }
 }

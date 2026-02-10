@@ -9,8 +9,9 @@ mod _gen;
 
 /// Ensure the tools directory is unpacked and up to date
 pub fn ensure_unpacked() -> cu::Result<()> {
-    let need_unpack = !matches!(_gen::TOOLS_VERSION.is_uptodate(), Ok(Some(true)));
-    if need_unpack {
+    let uptodate = matches!(_gen::TOOLS_VERSION.is_uptodate(), Ok(Some(true)))
+        && hmgr::paths::tools_root().exists();
+    if !uptodate {
         cu::check!(do_unpack(), "failed to unpack tools")?;
     }
     Ok(())
