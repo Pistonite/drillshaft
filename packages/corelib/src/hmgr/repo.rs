@@ -55,7 +55,6 @@ pub fn local_update() -> cu::Result<()> {
         build_script
             .command()
             .current_dir(&repo_path)
-            .arg("--clean")
             .all_inherit()
             .wait_nz()?;
     }
