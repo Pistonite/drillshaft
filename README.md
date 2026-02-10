@@ -29,7 +29,6 @@ cd shaft
 cargo run --bin shaft-build
 cargo build --bin shaft
 target/debug/shaft
-cargo install --path packages/cli
 ```
 
 Then, setup:
