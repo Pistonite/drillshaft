@@ -43,4 +43,4 @@ tasks:
     - cargo run --bin shaft -- {{.CLI_ARGS}}
 
   run-build:
-    - cargo run --bin shaft-build
+    - cargo run --bin shaft-build -- {{.CLI_ARGS}}

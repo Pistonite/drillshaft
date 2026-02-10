@@ -71,10 +71,22 @@ pub fn build_sync_graph(
     for pkg_id in pkgs {
         cu::check!(
             collect_dependencies(pkg_id, installed, &mut sync_pkgs, provider_selection),
-            "failed to collect dependencies"
+            "failed to collect dependencies for {pkg_id}"
         )?;
     }
-    let sync_pkgs = resolve_config_pkgs(sync_pkgs, EnumSet::new(), installed);
+    loop {
+        let len_before = sync_pkgs.len();
+        let config_deps = resolve_config_pkgs(sync_pkgs, EnumSet::new(), installed);
+        for pkg_id in config_deps {
+            cu::check!(
+                collect_dependencies(pkg_id, installed, &mut sync_pkgs, provider_selection),
+                "failed to collect dependencies for {pkg_id}"
+            )?;
+        }
+        if sync_pkgs.len() == len_before {
+            break;
+        }
+    }
 
     // check if newly installed will cause conflict
     let new_pkgs = sync_pkgs.difference(installed.pkgs);
@@ -121,6 +133,7 @@ pub fn resolve_sync_order(
     pkgs: EnumSet<PkgId>,
     bin_providers: &EnumMap<BinId, Option<PkgId>>,
 ) -> cu::Result<Vec<PkgId>> {
+    cu::debug!("resolving sync order: {pkgs}, bin_providers={bin_providers:?}");
     let mut remaining = pkgs;
     let mut out = Vec::with_capacity(pkgs.len() + 1);
     // always sync core-pseudo first
@@ -181,6 +194,7 @@ pub fn collect_dependencies(
     if !out_pkgs.insert(pkg) {
         // pkg is already added, meaning its dependencies
         // are all processed
+        cu::debug!("bin_deps already added: {pkg}");
         return Ok(());
     }
     let bin_deps = pkg.package().binary_dependencies();

@@ -13,3 +13,6 @@ pub mod tools;
 
 mod item;
 pub use item::{Item, ItemMgr};
+
+mod clean;
+pub use clean::clean_home;

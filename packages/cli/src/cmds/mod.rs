@@ -6,3 +6,5 @@ mod config;
 pub use config::{config, config_dirty, config_dirty_all, config_location};
 mod info;
 pub use info::info;
+mod clean;
+pub use clean::clean;
