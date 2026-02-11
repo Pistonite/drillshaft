@@ -41,7 +41,7 @@ wsclip.VERSION = "0.1.6"
 
 [git]
 'cfg(windows)'.ALIAS_VERSION = "1"
-'cfg(windows)'.VERSION = "2.53.0"
+'cfg(windows)'.VERSION = "2.52.0"
 'cfg(target_os="linux")'.VERSION = "2.53.0"
 delta.VERSION = "0.18.2"
 CFG_VERSION = "2"
