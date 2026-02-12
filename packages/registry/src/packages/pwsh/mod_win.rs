@@ -3,6 +3,7 @@
 use crate::pre::*;
 
 register_binaries!("pwsh");
+binary_dependencies!(_7z);
 config_dependencies!(Shellutils); // for vipwsh
 
 pub fn verify(ctx: &Context) -> cu::Result<Verified> {
