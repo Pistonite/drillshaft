@@ -18,5 +18,13 @@ pub fn configure(cfg: &SddmConfig) -> cu::Result<()> {
     section.set("Relogin", "true");
     section.set("Session", "wayland");
     section.set("User", &cfg.autologin.user);
-    ini.write()
+    ini.write()?;
+
+    opfs::sudo("systemctl", "enabling sddm service")?
+        .args(["enable", "sddm.service"])
+        .stdoe(cu::lv::P)
+        .stdin_null()
+        .wait_nz()?;
+
+    Ok(())
 }
