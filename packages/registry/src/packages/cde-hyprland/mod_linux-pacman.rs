@@ -28,6 +28,8 @@ static PACKAGES: &[&str] = &[
     // DE stuff
     "qt5-wayland",
     "qt6-wayland",
+    "polkit",
+    "polkit-gnome", // authentication agent (password prompt)
     "hyprpaper", // wall paper
     "hyprlock", // lock screen
     "waybar", // status bar
@@ -59,19 +61,26 @@ pub fn install(ctx: &Context) -> cu::Result<()> {
 }
 
 pub fn uninstall(_: &Context) -> cu::Result<()> {
-    cu::error!("cannot uninstall desktop environment");
-    Ok(())
+    cu::bail!("cannot uninstall desktop environment");
 }
 
 pub fn configure(ctx: &Context) -> cu::Result<()> {
     let config = ctx.load_config(CONFIG)?;
     cu::check!(sddm::configure(&config.sddm), "failed to configure sddm")?;
 
+    if let Some(mut home) = std::env::home_dir() {
+        home.extend([".config", "hypr"]);
+        ctx.add_item(Item::shim_bin(
+            "vihypr",
+            ShimCommand::target("viopen").args([home.into_utf8()?]),
+        ))?;
+    }
     ctx.add_item(Item::bash(r#"
 explorer() {
     setsid nautilus "${1:-$HOME}" > /dev/null 2>&1 < /dev/null &
 }
     "#))?;
+
 
     Ok(())
 }

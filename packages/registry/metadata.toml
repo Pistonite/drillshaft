@@ -172,7 +172,7 @@ VERSION = "0.11.6"
 'cfg(all(windows,target_arch="aarch64"))'.SHA = "67a4e1da1f0d99e71c5e7b2dfd95f8c34721bd8c139eec99bb3e9034c2766301"
 'cfg(all(windows,target_arch="x86_64"))'.SHA = "90fc6d7cdf3d3388737caab1e2c554aa24b468f3a5cc38ef63857ddf1103513c"
 'cfg(target_os="linux")'.SHA = "2fc90b962327f73a78afbfb8203fd19db8db9cdf4ee5e2bef84704339add89cc"
-NVIM_CFG = "6"
+NVIM_CFG = "7"
 
 [tree_sitter]
 VERSION = "0.26.5"
@@ -182,5 +182,6 @@ REPO = "https://github.com/tree-sitter/tree-sitter"
 'cfg(target_os="linux")'.SHA = "d38d9a22ef398489e1eb291b2dea41467487020fe8280c2311dbbad9ba663a34"
 
 [hyprland]
-CFG_VERSION = "2"
 VERSION = "0.53.3"
+CFG_VERSION = "2"
+kitty.CFG_VERSION = "1"
